@@ -1,15 +1,11 @@
 package main
 
 import (
-	"net/http"
-
-	"github.com/labstack/echo/v4"
+	"github.com/kiwipanel/scaffolding/cmd/web"
 )
 
 func main() {
-	e := echo.New()
-	e.GET("/", func(c echo.Context) error {
-		return c.String(http.StatusOK, "Hello, kiwipanel.org!")
-	})
-	e.Logger.Fatal(e.Start(":7879"))
+
+	web.Boot()
+
 }
