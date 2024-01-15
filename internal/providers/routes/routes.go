@@ -2,7 +2,7 @@ package routes
 
 import (
 	"github.com/kiwipanel/scaffolding/internal/app/authentication/routes"
-	"github.com/labstack/echo"
+	"github.com/labstack/echo/v4"
 )
 
 func ProvidersRoutes(r *echo.Echo) {
