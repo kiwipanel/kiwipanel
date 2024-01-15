@@ -1,15 +1,22 @@
 package routing
 
 import (
-	"net/http"
-
+	"github.com/kiwipanel/scaffolding/internal/providers/routes"
 	"github.com/labstack/echo"
 )
 
+var r = echo.New()
+
 func Router() {
-	e := echo.New()
-	e.GET("/", func(c echo.Context) error {
-		return c.String(http.StatusOK, "Hello, kiwipanel.org!")
-	})
-	e.Logger.Fatal(e.Start(":7879"))
+	routes.ProvidersRoutes(r)
+
+}
+
+func GetRoute() *echo.Echo {
+	return r
+}
+
+func Run() {
+	Router()
+	r.Logger.Fatal(r.Start(":7879"))
 }
