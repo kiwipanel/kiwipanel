@@ -16,5 +16,5 @@ func (t *Template) Render(w io.Writer, name string, data interface{}, c echo.Con
 }
 
 var RenderTemplates = &Template{
-	templates: template.Must(template.ParseGlob("internal/templates/defaulttheme/base/*.tmpl")),
+	templates: template.Must(template.ParseGlob("internal/templates/default/*/*.tmpl")),
 }
