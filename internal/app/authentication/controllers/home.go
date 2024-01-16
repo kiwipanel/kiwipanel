@@ -13,7 +13,7 @@ func (app *Controller) Homepage(c echo.Context) error {
 
 	//TODO: Check the session if logged in
 	if len(passcode) < 1 {
-		return c.String(http.StatusOK, "page not found")
+		return c.String(http.StatusOK, "Cannot find the page. Using your passcode to access.")
 	}
 
 	fmt.Println(reflect.TypeOf(passcode))
@@ -24,4 +24,10 @@ func (app *Controller) HomeAccess(c echo.Context) error {
 	passcode := c.Param("passcode")
 	fmt.Println(reflect.TypeOf(passcode))
 	return c.String(http.StatusOK, passcode)
+}
+
+func (app *Controller) Hello(c echo.Context) error {
+	passcode := c.Param("passcode")
+	fmt.Println(reflect.TypeOf(passcode))
+	return c.Render(http.StatusOK, "base", "")
 }
