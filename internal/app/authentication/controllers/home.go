@@ -27,7 +27,5 @@ func (app *Controller) HomeAccess(c echo.Context) error {
 }
 
 func (app *Controller) Hello(c echo.Context) error {
-	passcode := c.Param("passcode")
-	fmt.Println(reflect.TypeOf(passcode))
-	return c.Render(http.StatusOK, "base", "")
+	return c.Render(http.StatusOK, "hello", "")
 }
