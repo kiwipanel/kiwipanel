@@ -8,6 +8,6 @@ import (
 func PublicRoutes(r *echo.Echo) {
 	controller := controllers.New()
 	r.GET("/", controller.Homepage)
-	r.GET("/:passcode", controller.HomeAccess)
+	r.GET("/:passcode", controller.Homepage)
 	r.GET("/hello", controller.Hello)
 }
