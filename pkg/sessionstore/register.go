@@ -20,7 +20,7 @@ func Register(r *echo.Echo) {
 
 	Store.Options = &sessions.Options{
 		Path:     "/",
-		MaxAge:   60 * 15,
+		MaxAge:   86400 * 5, //5 days
 		HttpOnly: true,
 	}
 

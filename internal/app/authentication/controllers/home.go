@@ -10,7 +10,12 @@ import (
 )
 
 func (app *Controller) Homepage(c echo.Context) error {
-	sess, _ := session.Get("session", c)
+	sess, err := session.Get("test_session", c)
+
+	if err != nil {
+		fmt.Println(err)
+		return c.String(http.StatusOK, "Cannot find the page. err - authentication failed")
+	}
 	username := sess.Values["foo"].(string)
 	return c.String(http.StatusOK, "Hello, "+username)
 
@@ -35,7 +40,7 @@ func (app *Controller) HomeAccess(c echo.Context) error {
 
 func (app *Controller) Hello(c echo.Context) error {
 
-	sess, _ := session.Get("session", c)
+	sess, _ := session.Get("test_session", c)
 	sess.Values["foo"] = "bar update"
 	sess.Save(c.Request(), c.Response())
 
