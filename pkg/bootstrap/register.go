@@ -1,6 +1,9 @@
 package bootstrap
 
 import (
+	"fmt"
+
+	"github.com/kiwipanel/scaffolding/config"
 	"github.com/kiwipanel/scaffolding/pkg/routing"
 	"github.com/kiwipanel/scaffolding/pkg/sessionstore"
 	"github.com/kiwipanel/scaffolding/pkg/ui/static"
@@ -13,5 +16,11 @@ func Register() {
 	r.Renderer = view.RenderTemplates
 	routing.Register()
 	sessionstore.Register(r)
-	r.Logger.Fatal(r.Start(":7879"))
+
+	config := config.NewConfigServer()
+
+	fmt.Println(config.Server.Port)
+
+	r.Logger.Fatal(r.Start(":8443"))
+
 }
