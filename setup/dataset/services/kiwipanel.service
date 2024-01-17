@@ -1,0 +1,10 @@
+[Unit]
+Description=Kiwipanel application
+[Service]
+Type=simple
+Restart=always
+RestartSec=5s
+WorkingDirectory=/www/wwwroot/songngu.net/core
+ExecStart=/www/wwwroot/songngu.net/core/bin/kiwipanel start
+[Install]
+WantedBy=multi-user.target
