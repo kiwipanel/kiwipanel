@@ -1,3 +1,3 @@
 package install
 
-var upgrade string = "apt update && apt -y upgrade && apt -y install curl wget sudo"
+var upgrade_ubuntu string = "apt update && apt -y upgrade && apt -y install curl wget sudo"
