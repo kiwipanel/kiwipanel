@@ -5,6 +5,7 @@ KiwiPanel is a lightweight control panel helping you manage LEMP stack with less
 - https://github.com/hestiacp/hestiacp
 - https://echarts.apache.org/
 - https://github.com/ConvoyPanel/panel
+- https://blog.cloudflare.com/exposing-go-on-the-internet/
 
 ## Dependencies
 - github.com/bitfield/script

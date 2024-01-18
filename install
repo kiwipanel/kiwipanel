@@ -1,0 +1,87 @@
+#!/bin/bash
+#######################################################
+# KiwiPanel Installer v0.0.1
+# To install KiwiPanel type:
+# curl -sLO https://raw.githubusercontent.com/yeungon/kiwiscript/main/install && chmod +x install && sudo bash install
+
+#######################################################
+
+LANG=en_US.UTF-8
+
+#sudo -s
+
+# Check for sudo/root privileges
+if [[ $(whoami) != "root" ]]; then
+	echo "$(tput setaf 1)You should install KiwiPanel as root or using sudo.$(tput sgr0)"	
+	exit 1
+fi
+
+# Check the current distro
+readonly distro=$(grep -oP 'PRETTY_NAME="\K[^"]+' /etc/os-release | cut -f1 -d' ')
+readonly kernel_version=$(uname -r)
+
+echo "Your current Kernel: ${kernel_version}"
+echo "Your current Linux distro: ${distro}"
+
+function check_os() {
+    if [[ "$distro" != "Ubuntu" ]]; then
+        echo "$(tput setaf 1)The current version of KiwiPanel only works on Ubuntu.$(tput sgr0)"
+        exit 1
+    fi
+}
+function check_file_availability() {
+  if [ -e "$1" ]; then
+    return 0  # File exists, return true (0)
+  else
+    return 1  # File does not exist, return false (non-zero)
+  fi
+}
+
+function BaseCentos(){            
+    sudo yum install wget curl git zip nano -y
+}
+
+function BaseUbuntu(){        
+    sudo apt update && sudo apt -y upgrade && sudo apt -y install wget curl git zip nano
+
+}
+ # Install the base system for the specified distribution.
+function installBase(){    
+    if [ "$distro" == "Ubuntu" ]; then
+        BaseUbuntu
+    elif [ "$distro" == "AlmaLinux" ] || [ "$distro" == "Centos" ] || [ "$distro" == "RockyLinux" ]; then
+        BaseCentos
+    fi
+}
+
+function getBinary() {
+    wget https://tudien.net/kiwi
+}
+
+function removeFile() {
+    cd /usr/bin
+
+    if check_file_availability "$1"; then
+        sudo rm "$1"
+    fi
+}
+
+function moveFile() {
+    sudo mv -v kiwi /usr/bin
+    sudo chmod 755 /usr/bin/kiwi    
+}
+
+function run(){
+    echo "kiwiscript has been successfully installed on your VPS!"
+    kiwi
+}
+
+check_os
+installBase
+removeFile "kiwi"
+getBinary
+moveFile
+run
+rm install
+
+

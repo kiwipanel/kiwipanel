@@ -22,6 +22,7 @@ func (app *Controller) Homepage(c echo.Context) error {
 
 	//	return c.String(http.StatusOK, "Hello, "+username)
 
+	// If
 	passcode := c.Param("passcode")
 	if len(passcode) < 1 || len(passcode) != 9 {
 		return c.String(http.StatusOK, "Cannot find the page. Using your passcode to access.")
