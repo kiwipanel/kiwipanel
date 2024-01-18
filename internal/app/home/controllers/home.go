@@ -10,6 +10,7 @@ import (
 )
 
 func (app *Controller) Homepage(c echo.Context) error {
+
 	sess, err := session.Get("user_authenticated", c)
 
 	if err != nil {

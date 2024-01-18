@@ -1,7 +1,7 @@
 package routes
 
 import (
-	"github.com/kiwipanel/scaffolding/internal/app/authentication/controllers"
+	"github.com/kiwipanel/scaffolding/internal/app/home/controllers"
 	"github.com/labstack/echo/v4"
 )
 

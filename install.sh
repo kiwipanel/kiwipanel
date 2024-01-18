@@ -1,0 +1,1 @@
+install = "go mod tidy"
