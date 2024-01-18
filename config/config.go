@@ -5,6 +5,8 @@ import (
 	"log"
 	"sync"
 	"time"
+
+	"gorm.io/gorm"
 )
 
 type Config struct {
@@ -28,10 +30,10 @@ type AppConfig struct {
 	InProduction  bool
 	AUTH_USER     string
 	AUTH_PASSWORD string
+	DB            *gorm.DB
 }
 
 var (
 	once     sync.Once // create sync.Once primitive
 	instance *Config   // create nil Config struct
-
 )
