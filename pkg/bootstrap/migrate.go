@@ -6,5 +6,9 @@ import (
 )
 
 func Migrate() {
-	database.DB.AutoMigrate(&schema.Panel{}, &schema.Product{}, &schema.User{})
+	database.DB.AutoMigrate(
+		&schema.Panel{},
+		&schema.Product{},
+		&schema.User{},
+	)
 }

@@ -19,15 +19,16 @@ func Setup() {
 
 	if result.Error != nil {
 		// Handle the error (record not found, connection issue, etc.)
-		fmt.Println("Error:", result.Error)
+		fmt.Println("Cannot connect to the database. Error:", result.Error)
 	} else if result.RowsAffected == 0 {
 		// Handle the case where no record was found
 		FirstSetup()
-		fmt.Println("No record found")
+		fmt.Println("No record found. Starting to setup")
 	} else {
 		// Record found, do something with 'panel'
 		fmt.Println("ID:", panel.ID)
 		fmt.Println(panel.Passcode)
+		fmt.Println("Already setup")
 	}
 
 }
