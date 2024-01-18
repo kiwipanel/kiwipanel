@@ -11,13 +11,15 @@ import (
 	"github.com/kiwipanel/scaffolding/pkg/ui/view"
 )
 
+var app config.AppConfig
+
 func Register() {
 	r := routing.GetRoute()
 	static.Register(r)
 	r.Renderer = view.RenderTemplates
-	routing.Register()
+	routing.Register(&app)
 	sessionstore.Register(r)
-	database.Connect()
+	database.Connect(&app)
 
 	config := config.NewConfigServer()
 	fmt.Println(config.Server.Port)
