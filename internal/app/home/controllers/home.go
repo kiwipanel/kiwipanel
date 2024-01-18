@@ -5,32 +5,39 @@ import (
 	"net/http"
 	"reflect"
 
+	"github.com/kiwipanel/scaffolding/internal/app/panel/models"
 	"github.com/labstack/echo-contrib/session"
 	"github.com/labstack/echo/v4"
 )
 
 func (app *Controller) Homepage(c echo.Context) error {
-
-	sess, err := session.Get("user_authenticated", c)
+	passcode := c.Param("passcode")
+	if len(passcode) < 1 || len(passcode) != 9 {
+		return c.String(http.StatusOK, "Cannot find the page. Using your passcode to access.")
+	}
+	secure, err := models.ReadPanel()
 
 	if err != nil {
 		fmt.Println(err)
 		return c.String(http.StatusNotAcceptable, "Cannot find the page. err - authentication failed")
 	}
-	username := sess.Values["foo"].(string)
-	return c.String(http.StatusOK, "Hello, "+username)
-
-	passcode := c.Param("passcode")
-
-	//TODO: Check the session if logged in, then display the dashboard, if not check the passcode
-	//
-	if len(passcode) < 1 || len(passcode) != 7 {
-		return c.String(http.StatusOK, "Cannot find the page. Using your passcode to access.")
+	if secure.Passcode != passcode {
+		fmt.Println(err)
+		return c.String(http.StatusNotAcceptable, "Passcode is not correct. err - authentication failed")
 	}
 
-	fmt.Println("passcode: ", passcode)
-
 	return c.String(http.StatusOK, "Hello there, kiwipanel.org!. It is good")
+
+	// sess, err := session.Get("user_authenticated", c)
+
+	// if err != nil {
+	// 	fmt.Println(err)
+	// 	return c.String(http.StatusNotAcceptable, "Cannot find the page. err - authentication failed")
+	// }
+	//username := sess.Values["foo"].(string)
+
+	//	return c.String(http.StatusOK, "Hello, "+username)
+
 }
 
 func (app *Controller) HomeAccess(c echo.Context) error {
