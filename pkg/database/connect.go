@@ -4,7 +4,9 @@ import (
 	"sync"
 
 	"github.com/kiwipanel/scaffolding/config"
-	"gorm.io/driver/sqlite"
+	// "gorm.io/driver/sqlite" # needs to use cgo
+	// pure go
+	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
 )
 

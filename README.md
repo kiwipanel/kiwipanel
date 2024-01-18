@@ -1,13 +1,10 @@
-# scaffolding
-
-Code editor
-https://github.com/ajaxorg/ace
-https://codemirror.net/5/doc/manual.html
+## scaffolding
+KiwiPanel is a lightweight control panel helping you manage LEMP stack with less headache.
 
 ## References:
-https://github.com/hestiacp/hestiacp
-https://echarts.apache.org/
-https://github.com/ConvoyPanel/panel
+- https://github.com/hestiacp/hestiacp
+- https://echarts.apache.org/
+- https://github.com/ConvoyPanel/panel
 
 ## Dependencies
 - github.com/bitfield/script
@@ -20,6 +17,8 @@ https://github.com/ConvoyPanel/panel
 - github.com/spf13/cobra
 - gorm.io/driver/sqlite
 - gorm.io/gorm
+- https://github.com/ajaxorg/ace
+- https://codemirror.net/5/doc/manual.html
 
 
 

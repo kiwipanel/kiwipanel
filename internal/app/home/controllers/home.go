@@ -11,6 +11,17 @@ import (
 )
 
 func (app *Controller) Homepage(c echo.Context) error {
+
+	// sess, err := session.Get("user_authenticated", c)
+
+	// if err != nil {
+	// 	fmt.Println(err)
+	// 	return c.String(http.StatusNotAcceptable, "Cannot find the page. err - authentication failed")
+	// }
+	//username := sess.Values["foo"].(string)
+
+	//	return c.String(http.StatusOK, "Hello, "+username)
+
 	passcode := c.Param("passcode")
 	if len(passcode) < 1 || len(passcode) != 9 {
 		return c.String(http.StatusOK, "Cannot find the page. Using your passcode to access.")
@@ -27,16 +38,6 @@ func (app *Controller) Homepage(c echo.Context) error {
 	}
 
 	return c.String(http.StatusOK, "Hello there, kiwipanel.org!. It is good")
-
-	// sess, err := session.Get("user_authenticated", c)
-
-	// if err != nil {
-	// 	fmt.Println(err)
-	// 	return c.String(http.StatusNotAcceptable, "Cannot find the page. err - authentication failed")
-	// }
-	//username := sess.Values["foo"].(string)
-
-	//	return c.String(http.StatusOK, "Hello, "+username)
 
 }
 
