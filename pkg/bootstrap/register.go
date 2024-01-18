@@ -1,8 +1,6 @@
 package bootstrap
 
 import (
-	"fmt"
-
 	"github.com/kiwipanel/scaffolding/config"
 	"github.com/kiwipanel/scaffolding/pkg/database"
 	"github.com/kiwipanel/scaffolding/pkg/routing"
@@ -12,18 +10,15 @@ import (
 )
 
 var app config.AppConfig
+var r = routing.GetRoute()
 
 func Register() {
-	r := routing.GetRoute()
 	static.Register(r)
 	r.Renderer = view.RenderTemplates
 	routing.Register(&app)
 	sessionstore.Register(r)
 	database.Connect(&app)
-
-	config := config.NewConfigServer()
-	fmt.Println(config.Server.Port)
-
-	r.Logger.Fatal(r.Start(":8443"))
+	// config := config.NewConfigServer()
+	// fmt.Println(config.Server.Port)
 
 }

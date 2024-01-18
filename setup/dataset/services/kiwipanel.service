@@ -4,7 +4,7 @@ Description=Kiwipanel application
 Type=simple
 Restart=always
 RestartSec=5s
-WorkingDirectory=/home/kiwipanel/bin
-ExecStart=/home/kiwipanel/bin/kiwipanel start
+WorkingDirectory=/home/scaffolding/bin
+ExecStart=/home/scaffolding/bin/kiwipanel start
 [Install]
 WantedBy=multi-user.target
