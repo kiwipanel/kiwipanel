@@ -2,21 +2,32 @@
 #######################################################
 # KiwiPanel Installer v0.0.1
 # To install KiwiPanel type:
-# curl -sLO https://raw.githubusercontent.com/yeungon/kiwiscript/main/install && chmod +x install && sudo bash install
+# curl -sLO # curl -sLO https://install.kiwipanel.org/install && chmod +x install && sudo bash install
 
 #######################################################
-
 LANG=en_US.UTF-8
 
-#sudo -s
+kiwipanel_d_start_time=$(date +%s)
+echo "$(tput setaf 2) Installing KiwiPanel....$(tput sgr0)"   
 
+#sudo -s
 # Check for sudo/root privileges
 if [[ $(whoami) != "root" ]]; then
 	echo "$(tput setaf 1)You should install KiwiPanel as root or using sudo.$(tput sgr0)"	
 	exit 1
 fi
 
-# Check the current distro
+#Check the ARCHITECTURE
+#Ref: https://raw.githubusercontent.com/runtipi/runtipi/master/scripts/install.sh
+# Not supported on 32 bits systems. 
+# Note: aarch64 [ARM 64-bit (also known as AArch64), armv7: 32-bit ARM]
+ARCHITECTURE="$(uname -m)"
+if [[ "$ARCHITECTURE" == "armv7"* ]] || [[ "$ARCHITECTURE" == "i686" ]] || [[ "$ARCHITECTURE" == "i386" ]]; then
+  echo "KiwiPanel is not supported on 32 bits systems"
+  exit 1
+fi
+
+# Check the current distro and the kernel
 readonly distro=$(grep -oP 'PRETTY_NAME="\K[^"]+' /etc/os-release | cut -f1 -d' ')
 readonly kernel_version=$(uname -r)
 
@@ -37,14 +48,20 @@ function check_file_availability() {
   fi
 }
 
+function Update(){
+     sudo apt update && sudo apt -y upgrade
+}
+
+
 function BaseCentos(){            
-    sudo yum install wget curl git zip nano -y
+    sudo yum install wget curl git-all zip nano -y
 }
 
 function BaseUbuntu(){        
-    sudo apt update && sudo apt -y upgrade && sudo apt -y install wget curl git zip nano
+    sudo apt install wget curl git-all zip nano -y
 
 }
+
  # Install the base system for the specified distribution.
 function installBase(){    
     if [ "$distro" == "Ubuntu" ]; then
@@ -56,6 +73,15 @@ function installBase(){
 
 function getBinary() {
     wget https://tudien.net/kiwi
+}
+
+function moveHome(){
+    cd /home
+}
+
+
+function Clone(){  
+  sudo git clone https://github.com/yeungon/In-JavaScript-we-trust.git  
 }
 
 function removeFile() {
@@ -71,17 +97,91 @@ function moveFile() {
     sudo chmod 755 /usr/bin/kiwi    
 }
 
-function run(){
-    echo "kiwiscript has been successfully installed on your VPS!"
-    kiwi
+function Success(){
+    printf " \n"
+    echo "$(tput setaf 2) Kiwiscript has been successfully installed on your VPS!.$(tput sgr0)"   
+    kiwipanel_d_end_time=$(date +%s)
+    elapsed=$((kiwipanel_d_end_time - kiwipanel_d_start_time))     
+    echo "$(tput setaf 2) Total time installed: ${elapsed} seconds.$(tput sgr0)"      
+    printf " \n"     
 }
+
+#Reference for future work: https://raw.githubusercontent.com/runtipi/runtipi/master/scripts/install.sh
+function install_docker() {
+  local os="${1}"
+  echo "Installing docker for os ${os}"
+  echo "Your sudo password might be asked to install docker"
+
+  if [[ "${os}" == "debian" ]]; then
+    sudo DEBIAN_FRONTEND=noninteractive apt-get install -y ca-certificates curl gnupg lsb-release
+    sudo mkdir -p /etc/apt/keyrings
+    curl -fsSL https://download.docker.com/linux/debian/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list >/dev/null
+    sudo DEBIAN_FRONTEND=noninteractive apt-get update -y
+    sudo DEBIAN_FRONTEND=noninteractive apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+    return 0
+  elif [[ "${os}" == "ubuntu" || "${os}" == "pop" ]]; then
+    sudo DEBIAN_FRONTEND=noninteractive apt-get install -y ca-certificates curl gnupg lsb-release
+    sudo mkdir -p /etc/apt/keyrings
+    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list >/dev/null
+    sudo DEBIAN_FRONTEND=noninteractive apt-get update -y
+    sudo DEBIAN_FRONTEND=noninteractive apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+    return 0
+  elif [[ "${os}" == "centos" ]]; then
+    sudo yum install -y yum-utils
+    sudo yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+    sudo yum install -y --allowerasing docker-ce docker-ce-cli containerd.io docker-compose-plugin
+    sudo systemctl start docker
+    sudo systemctl enable docker
+    return 0
+  elif [[ "${os}" == "rocky" ]]; then
+    sudo dnf config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+    sudo dnf -y install docker-ce docker-ce-cli containerd.io docker-compose-plugin
+    sudo systemctl start docker
+    sudo systemctl enable docker
+    return 0
+  elif [[ "${os}" == "fedora" ]]; then
+    sudo dnf -y install dnf-plugins-core
+    sudo dnf config-manager --add-repo https://download.docker.com/linux/fedora/docker-ce.repo
+    sudo dnf -y install docker-ce docker-ce-cli containerd.io docker-compose-plugin
+    sudo systemctl start docker
+    sudo systemctl enable docker
+    return 0
+  elif [[ "${os}" == "arch" ]]; then
+    sudo pacman -Sy --noconfirm docker docker-compose
+    sudo systemctl start docker.service
+    sudo systemctl enable docker.service
+    return 0
+  else
+    return 1
+  fi
+}
+
+if ! command -v docker >/dev/null; then
+  echo "Installing docker"
+  install_docker "${OS}"
+  docker_result=$?
+
+  if [[ docker_result -ne 0 ]]; then
+    echo "Your system ${OS} is not supported trying with sub_os ${SUB_OS}"
+    install_docker "${SUB_OS}"
+    docker_sub_result=$?
+
+    if [[ docker_sub_result -ne 0 ]]; then
+      echo "Your system ${SUB_OS} is not supported please install docker manually"
+      exit 1
+    fi
+  fi
+fi
 
 check_os
 installBase
 removeFile "kiwi"
-getBinary
+moveHome
+Clone
 moveFile
-run
-rm install
+Success
+# rm install
 
 
