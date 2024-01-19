@@ -5,10 +5,12 @@
 # curl -sLO # curl -sLO https://install.kiwipanel.org/install && chmod +x install && sudo bash install
 
 #######################################################
+clear;
 LANG=en_US.UTF-8
 
 kiwipanel_d_start_time=$(date +%s)
-echo "$(tput setaf 2) Installing KiwiPanel....$(tput sgr0)"   
+echo "$(tput setaf 2)Installing KiwiPanel....$(tput sgr0)" 
+sleep 2;  
 
 #sudo -s
 # Check for sudo/root privileges
@@ -48,23 +50,33 @@ function check_file_availability() {
   fi
 }
 
-function Update(){
-     sudo apt update && sudo apt -y upgrade
+function UpdateUbuntu(){
+    printf " \n"
+    echo "$(tput setaf 2)Update the system....$(tput sgr0)"     
+    sleep 2;
+    sudo apt-get update && sudo apt-get -y upgrade
 }
 
 
-function BaseCentos(){            
+function BaseCentos(){   
+    printf " \n"
+    echo "$(tput setaf 2)Installing the base tools....$(tput sgr0)" 
+    sleep 2;         
     sudo yum install wget curl git-all zip nano -y
 }
 
-function BaseUbuntu(){        
+function BaseUbuntu(){    
+    printf " \n"
+    echo "$(tput setaf 2)Installing the base tools....$(tput sgr0)" 
+    sleep 2;    
     sudo apt install wget curl git-all zip nano -y
 
 }
 
  # Install the base system for the specified distribution.
-function installBase(){    
+function installBase(){      
     if [ "$distro" == "Ubuntu" ]; then
+        UpdateUbuntu
         BaseUbuntu
     elif [ "$distro" == "AlmaLinux" ] || [ "$distro" == "Centos" ] || [ "$distro" == "RockyLinux" ]; then
         BaseCentos
@@ -81,7 +93,8 @@ function moveHome(){
 
 
 function Clone(){  
-  sudo git clone https://github.com/yeungon/In-JavaScript-we-trust.git  
+  sudo git clone https://github.com/yeungon/In-JavaScript-we-trust.git 
+  #sudo git clone https://github.com/kiwipanel/scaffolding.git 
 }
 
 function removeFile() {
@@ -99,10 +112,10 @@ function moveFile() {
 
 function Success(){
     printf " \n"
-    echo "$(tput setaf 2) Kiwiscript has been successfully installed on your VPS!.$(tput sgr0)"   
+    echo "$(tput setaf 2)Kiwiscript has been successfully installed on your VPS!.$(tput sgr0)"   
     kiwipanel_d_end_time=$(date +%s)
     elapsed=$((kiwipanel_d_end_time - kiwipanel_d_start_time))     
-    echo "$(tput setaf 2) Total time installed: ${elapsed} seconds.$(tput sgr0)"      
+    echo "$(tput setaf 2)Total time installed: ${elapsed} seconds.$(tput sgr0)"      
     printf " \n"     
 }
 
@@ -174,6 +187,8 @@ if ! command -v docker >/dev/null; then
     fi
   fi
 fi
+
+#install nginx https://gist.github.com/Dryam/3cd2e55a19e1954f1433
 
 check_os
 installBase
