@@ -12,7 +12,6 @@ kiwipanel_d_start_time=$(date +%s)
 echo "$(tput setaf 2)Installing KiwiPanel....$(tput sgr0)" 
 sleep 2;  
 
-#sudo -s
 # Check for sudo/root privileges
 if [[ $(whoami) != "root" ]]; then
 	echo "$(tput setaf 1)You should install KiwiPanel as root or using sudo.$(tput sgr0)"	
@@ -83,23 +82,18 @@ function installBase(){
     fi
 }
 
-function getBinary() {
-    wget https://tudien.net/kiwi
-}
-
 function moveHome(){
     cd /home
 }
 
 
 function Clone(){  
-  sudo git clone https://github.com/yeungon/In-JavaScript-we-trust.git 
-  #sudo git clone https://github.com/kiwipanel/scaffolding.git 
+  sudo git clone https://github.com/kiwipanel/scaffolding.git
+  cd scaffolding  
 }
 
 function removeFile() {
     cd /usr/bin
-
     if check_file_availability "$1"; then
         sudo rm "$1"
     fi
@@ -110,7 +104,13 @@ function moveFile() {
     sudo chmod 755 /usr/bin/kiwi    
 }
 
+function StartSystem(){
+    sudo systemctl start kiwipanel
+}
+
 function Success(){
+    StartSystem
+
     printf " \n"
     echo "$(tput setaf 2)Kiwiscript has been successfully installed on your VPS!.$(tput sgr0)"   
     kiwipanel_d_end_time=$(date +%s)
