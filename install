@@ -9,7 +9,7 @@ clear;
 LANG=en_US.UTF-8
 
 kiwipanel_d_start_time=$(date +%s)
-echo "$(tput setaf 2)Installing KiwiPanel....$(tput sgr0)" 
+echo "$(tput setaf 2)Installing KiwiPanel...$(tput sgr0)" 
 sleep 3;  
 
 # Check for sudo/root privileges
@@ -68,6 +68,12 @@ function check_os() {
         exit 1
     fi
 }
+
+IP=`curl -s -L http://cpanel.net/showip.cgi`
+echo "$(tput setaf 2)Your IP address: $IP$(tput sgr0)" 
+sleep 3;  
+
+
 function check_file_availability() {
   if [ -e "$1" ]; then
     return 0  # File exists, return true (0)
@@ -160,6 +166,14 @@ function Success(){
     elapsed=$((kiwipanel_d_end_time - kiwipanel_d_start_time))     
     echo "$(tput setaf 2)Total time installed: ${elapsed} seconds.$(tput sgr0)"      
     printf " \n"     
+    echo "
+    
+    "$(tput setaf 2)================================Install KiwiPanel Done!==============================$(tput sgr0)"        
+    
+    Register and Login at : http://$IP:8443     
+
+    "$(tput setaf 2)=====================================================================================$(tput sgr0)"    
+    "
 }
 
 #Reference for future work: https://raw.githubusercontent.com/runtipi/runtipi/master/scripts/install.sh
