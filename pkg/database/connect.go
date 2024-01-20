@@ -13,7 +13,7 @@ import (
 var (
 	once          sync.Once // create sync.Once primitive)
 	DB            *gorm.DB
-	database_path = "./state/database/kiwipanel.sqlite"
+	database_path = "/home/scaffolding/state/database/kiwipanel.sqlite"
 )
 
 func Connect(app *config.AppConfig) {

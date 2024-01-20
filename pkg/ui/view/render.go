@@ -31,14 +31,6 @@ var (
 	basefile string = "/home/scaffolding/internal/templates/" + theme + "/*/*.tmpl"
 )
 
-// folder, err := filepath.Abs(filepath.Dir(os.Args[0]))
-// if err != nil {
-// 	log.Fatalln(err)
-// }
-// if _, err := templ.ParseGlob(filepath.Join(folder, "tmpl", "*.html")); err != nil {
-// 	log.Fatalln(err)
-// }
-
 var RenderTemplates = &Template{
 	templates: template.Must(template.ParseGlob(basefile)),
 }
