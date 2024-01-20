@@ -1,4 +1,4 @@
-## scaffolding
+## KiwiPanel scaffolding
 
 ALERT: NOT READY FOR PRODUCTION, STILL IN THE EARLY STAGE OF DEVELOPMENT.
 
@@ -6,24 +6,30 @@ KiwiPanel is a lightweight control panel helping you manage LEMP stack with less
 
 ## References:
 - https://github.com/hestiacp/hestiacp
-- https://echarts.apache.org/
 - https://github.com/ConvoyPanel/panel
 - https://blog.cloudflare.com/exposing-go-on-the-internet/
 - https://github.com/wptangtoc/wptangtoc-ols/
+- https://github.com/QROkes/webinoly
+- https://installer.cloudpanel.io/ce/v2/install.sh
+- https://github.com/sanvu88/ubuntu-lemp-stack
+- https://github.com/duy13/HocVPS-Script/tree/master
+- https://github.com/itvn9online/vpssim-free/
+- https://github.com/usmannasir/cyberpanel
 
 ## Dependencies
-- github.com/bitfield/script
-- github.com/gorilla/securecookie
-- github.com/gorilla/sessions
-- github.com/joho/godotenv
-- github.com/labstack/echo-contrib
-- github.com/labstack/echo/
-- github.com/shirou/gopsutil/
-- github.com/spf13/cobra
-- gorm.io/driver/sqlite
-- gorm.io/gorm
+- https://github.com/bitfield/script
+- https://github.com/gorilla/securecookie
+- https://github.com/gorilla/sessions
+- https://github.com/joho/godotenv
+- https://github.com/labstack/echo-contrib
+- https://github.com/labstack/echo/
+- https://github.com/shirou/gopsutil/
+- https://github.com/spf13/cobra
+- https://gorm.io/driver/sqlite
+- https://gorm.io/gorm
 - https://github.com/ajaxorg/ace
 - https://codemirror.net/5/doc/manual.html
+- https://echarts.apache.org/
 
 
 

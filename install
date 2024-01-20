@@ -10,7 +10,7 @@ LANG=en_US.UTF-8
 
 kiwipanel_d_start_time=$(date +%s)
 echo "$(tput setaf 2)Installing KiwiPanel....$(tput sgr0)" 
-sleep 2;  
+sleep 3;  
 
 # Check for sudo/root privileges
 if [[ $(whoami) != "root" ]]; then
@@ -18,6 +18,33 @@ if [[ $(whoami) != "root" ]]; then
 	exit 1
 fi
 
+function check_panel_script(){
+  echo "$(tput setaf 2)Checking the current script or panel, if any....$(tput sgr0)" 
+  sleep 3;  
+  if [ -f /var/cpanel/cpanel.config ]; then
+    clear
+    echo "Your server installed WHM/Cpanel, please reinstall to use KiwiPanel."
+    exit
+    fi
+
+    if [ -f /etc/psa/.psa.shadow ]; then
+    clear
+    echo "Your server installed Plesk, please reinstall to use KiwiPanel."
+    exit
+    fi
+
+    if [ -f /etc/init.d/directadmin ]; then
+    clear
+    echo "Your server installed DirectAdmin, please reinstall to use KiwiPanel."
+    exit
+    fi
+
+    if [ -f /etc/init.d/webmin ]; then
+    clear
+    echo "Your server installed Webmin, please reinstall to use KiwiPanel."
+    exit
+    fi
+}
 #Check the ARCHITECTURE
 #Ref: https://raw.githubusercontent.com/runtipi/runtipi/master/scripts/install.sh
 # Not supported on 32 bits systems. 
@@ -51,8 +78,8 @@ function check_file_availability() {
 
 function UpdateUbuntu(){
     printf " \n"
-    echo "$(tput setaf 2)Update the system....$(tput sgr0)"     
-    sleep 2;
+    echo "$(tput setaf 2)Updating the system....$(tput sgr0)"     
+    sleep 3;
     sudo apt-get update && sudo apt-get -y upgrade
 }
 
@@ -60,14 +87,14 @@ function UpdateUbuntu(){
 function BaseCentos(){   
     printf " \n"
     echo "$(tput setaf 2)Installing the base tools....$(tput sgr0)" 
-    sleep 2;         
+    sleep 3;         
     sudo yum install wget curl git-all zip nano -y
 }
 
 function BaseUbuntu(){    
     printf " \n"
     echo "$(tput setaf 2)Installing the base tools....$(tput sgr0)" 
-    sleep 2;    
+    sleep 3;    
     sudo apt install wget curl git-all zip nano -y
 
 }
@@ -91,6 +118,22 @@ function Clone(){
   sudo git clone https://github.com/kiwipanel/scaffolding.git
   cd scaffolding  
 }
+
+open_port() {
+    local port=$1
+    # Check if UFW is installed
+    if ! command -v ufw &> /dev/null; then
+        echo "UFW is not installed. Installing..."
+        sudo apt-get install ufw
+    fi
+    # Allow the specified port
+    sudo ufw allow $port
+    # Reload UFW
+    sudo ufw reload
+    # Display status
+    sudo ufw status
+}
+
 
 function removeFile() {
     cd /usr/bin
@@ -189,13 +232,14 @@ if ! command -v docker >/dev/null; then
 fi
 
 #install nginx https://gist.github.com/Dryam/3cd2e55a19e1954f1433
-
+check_panel_script
 check_os
 installBase
 removeFile "kiwi"
 moveHome
 Clone
 moveFile
+open_port 8443
 Success
 # rm install
 
