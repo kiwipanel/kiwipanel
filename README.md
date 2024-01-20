@@ -1,4 +1,7 @@
 ## scaffolding
+
+ALERT: NOT READY FOR PRODUCTION, STILL IN THE EARLY STAGE OF DEVELOPMENT.
+
 KiwiPanel is a lightweight control panel helping you manage LEMP stack with less headache.
 
 ## References:
@@ -6,6 +9,7 @@ KiwiPanel is a lightweight control panel helping you manage LEMP stack with less
 - https://echarts.apache.org/
 - https://github.com/ConvoyPanel/panel
 - https://blog.cloudflare.com/exposing-go-on-the-internet/
+- https://github.com/wptangtoc/wptangtoc-ols/
 
 ## Dependencies
 - github.com/bitfield/script
