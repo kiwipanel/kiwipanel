@@ -5,21 +5,12 @@ import (
 	"html/template"
 	"io"
 	"os"
-	"path/filepath"
 
 	"github.com/labstack/echo/v4"
 )
 
 type Template struct {
 	templates *template.Template
-}
-
-func getAbsolutePath(relativePath string) (string, error) {
-	absolutePath, err := filepath.Abs(relativePath)
-	if err != nil {
-		return "", err
-	}
-	return absolutePath, nil
 }
 
 func Dir() string {
@@ -31,8 +22,6 @@ func Dir() string {
 	return dir
 }
 
-// var indexHTML embed.FS
-
 //https://forum.golangbridge.org/t/how-to-handle-paths-for-supporting-files-in-a-package-in-go/14651
 
 var (
@@ -43,7 +32,6 @@ var (
 
 var RenderTemplates = &Template{
 	templates: template.Must(template.ParseGlob(basefile)),
-	//templates: template.Must(template.ParseFS(indexHTML, absoluteFilePath)),
 }
 
 func (t *Template) Render(w io.Writer, name string, data interface{}, c echo.Context) error {
