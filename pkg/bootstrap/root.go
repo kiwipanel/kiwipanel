@@ -8,7 +8,8 @@ import (
 )
 
 func Root(flag string) {
-	Register()
+	view.Loadmode(flag)
+	Register(flag)
 	Migrate()
 	Setup()
 	root_path, err := os.Executable()
@@ -18,8 +19,6 @@ func Root(flag string) {
 	fmt.Println(root_path)
 
 	fmt.Println("flag: ", flag)
-
-	view.Loadmode(flag)
 
 	r.Logger.Fatal(r.Start(":8443"))
 }

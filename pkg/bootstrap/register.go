@@ -14,13 +14,13 @@ import (
 var app config.AppConfig
 var r = routing.GetRoute()
 
-func Register() {
+func Register(mode string) {
 	env := config.NewENV()
 
 	app.UseCache = true
 	app.InProduction = true
 
-	app.KIWIPANEL_MODE = "development"
+	app.KIWIPANEL_MODE = mode
 
 	fmt.Println("Show app", app)
 	fmt.Println("env loaded in Register.com: ", env)
