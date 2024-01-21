@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"fmt"
 	"math/rand"
 	"net/http"
 
@@ -11,6 +12,8 @@ import (
 func (app *Controller) AdminHompage(c echo.Context) error {
 
 	randomNumber := rand.Intn(100) + 1
+
+	fmt.Println("MODE in adminhome controller: ", app.config.KIWIPANEL_MODE)
 
 	models.Create(app.config.DB, "hello", randomNumber)
 
