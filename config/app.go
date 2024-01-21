@@ -8,13 +8,14 @@ import (
 )
 
 type AppConfig struct {
-	UseCache      bool
-	TemplateCache map[string]*template.Template
-	ErrorLog      *log.Logger
-	InfoLog       *log.Logger
-	Test          string
-	InProduction  bool
-	AUTH_USER     string
-	AUTH_PASSWORD string
-	DB            *gorm.DB
+	KIWIPANEL_MODE string
+	UseCache       bool
+	TemplateCache  map[string]*template.Template
+	ErrorLog       *log.Logger
+	InfoLog        *log.Logger
+	Test           string
+	InProduction   bool
+	AUTH_USER      string
+	AUTH_PASSWORD  string
+	DB             *gorm.DB
 }

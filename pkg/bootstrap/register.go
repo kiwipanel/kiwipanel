@@ -1,6 +1,8 @@
 package bootstrap
 
 import (
+	"fmt"
+
 	"github.com/kiwipanel/scaffolding/config"
 	"github.com/kiwipanel/scaffolding/pkg/database"
 	"github.com/kiwipanel/scaffolding/pkg/routing"
@@ -13,6 +15,14 @@ var app config.AppConfig
 var r = routing.GetRoute()
 
 func Register() {
+	env := config.NewENV()
+	view.LoadConfig(*env)
+
+	fmt.Println(env.KIWIPANEL_MODE)
+
+	// Setting the config for the app from the ENV
+	app.KIWIPANEL_MODE = env.KIWIPANEL_MODE
+
 	static.Register(r)
 	r.Renderer = view.RenderTemplates
 	routing.Register(&app)

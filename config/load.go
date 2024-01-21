@@ -48,3 +48,42 @@ func NewConfigServer() *Config {
 
 	return instance
 }
+
+func NewENV() *ENV {
+	err := godotenv.Load(".env")
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
+
+	host := os.Getenv("SERVER_HOST")
+	kiwipanel_mode := os.Getenv("KIWIPANEL_MODE")
+	update := os.Getenv("UPDATE")
+	boolUpdate, err := strconv.ParseBool(update)
+	if err != nil {
+		log.Fatal(err)
+		fmt.Println("Cannot convert the string into env. Check your .env or the type in your ENV struct")
+	}
+
+	demo := os.Getenv("DEMO")
+	boolDemo, err := strconv.ParseBool(demo)
+	if err != nil {
+		log.Fatal(err)
+		fmt.Println("Cannot convert the string into env. Check your .env or the type in your ENV struct")
+	}
+
+	version, err := strconv.ParseFloat(os.Getenv("VERSION"), 64)
+	if err != nil {
+		fmt.Println("Error", err)
+		panic("wrong VERSION (check your .env)")
+	}
+
+	env = &ENV{
+		HOST:           host,
+		KIWIPANEL_MODE: kiwipanel_mode,
+		VERSION:        version,
+		UPDATE:         boolUpdate,
+		DEMO:           boolDemo,
+	}
+
+	return env
+}
