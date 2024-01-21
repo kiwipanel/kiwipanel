@@ -3,9 +3,11 @@ package bootstrap
 import (
 	"fmt"
 	"os"
+
+	"github.com/kiwipanel/scaffolding/pkg/ui/view"
 )
 
-func Root() {
+func Root(flag string) {
 	Register()
 	Migrate()
 	Setup()
@@ -14,5 +16,10 @@ func Root() {
 		fmt.Println(err)
 	}
 	fmt.Println(root_path)
+
+	fmt.Println("flag: ", flag)
+
+	view.Loadmode(flag)
+
 	r.Logger.Fatal(r.Start(":8443"))
 }

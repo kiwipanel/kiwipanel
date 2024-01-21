@@ -10,10 +10,15 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-var configENV config.ENV
+var app config.AppConfig
+var mode string
 
-func LoadConfig(configLoad config.ENV) {
-	configENV = configLoad
+func LoadConfig(appConfig config.AppConfig) {
+	app = appConfig
+}
+
+func Loadmode(getmode string) {
+	mode = getmode
 }
 
 type Template struct {
@@ -32,7 +37,6 @@ func Dir() string {
 //https://forum.golangbridge.org/t/how-to-handle-paths-for-supporting-files-in-a-package-in-go/14651
 
 var (
-	mode                 string = configENV.KIWIPANEL_MODE
 	theme                string = "default" //Can be configured if needed
 	basefile_development string = Dir() + "/internal/templates/" + theme + "/*/*.tmpl"
 	basefile_production  string = "/home/scaffolding/internal/templates/" + theme + "/*/*.tmpl"
@@ -40,8 +44,7 @@ var (
 
 func loadTemplateConditionally(condition string) string {
 
-	fmt.Println("Checking the condition", condition)
-	fmt.Println(configENV)
+	fmt.Println("mode: ", mode)
 
 	if condition == "development" {
 		return basefile_development
@@ -51,7 +54,7 @@ func loadTemplateConditionally(condition string) string {
 }
 
 var RenderTemplates = &Template{
-	templates: template.Must(template.ParseGlob(basefile_development)),
+	templates: template.Must(template.ParseGlob(loadTemplateConditionally("development"))),
 }
 
 func (t *Template) Render(w io.Writer, name string, data interface{}, c echo.Context) error {

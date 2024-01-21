@@ -9,20 +9,20 @@ import (
 )
 
 func init() {
-	rootCmd.AddCommand(serveCmd)
+	rootCmd.AddCommand(dev)
 }
 
-var serveCmd = &cobra.Command{
-	Use:   "start",
-	Short: "Start running the app using this command",
+var dev = &cobra.Command{
+	Use:   "dev",
+	Short: "dev - Start running the app using this command",
 	Long:  `The application will be run at the port 8443. The port is configed at the .env`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("Start the server using cmd/web/start.go")
-		start()
+		fmt.Println("dev evironment - Start the server using cmd/web/start.go")
+		devstart()
 	},
 }
 
-func start() {
-	flag := "production"
+func devstart() {
+	flag := "development"
 	bootstrap.Root(flag)
 }

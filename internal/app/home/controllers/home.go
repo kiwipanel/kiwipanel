@@ -6,6 +6,7 @@ import (
 	"reflect"
 
 	"github.com/kiwipanel/scaffolding/internal/app/panel/models"
+	"github.com/kiwipanel/scaffolding/pkg/helpers"
 	"github.com/labstack/echo-contrib/session"
 	"github.com/labstack/echo/v4"
 )
@@ -55,7 +56,16 @@ func (app *Controller) Hello(c echo.Context) error {
 	sess.Save(c.Request(), c.Response())
 
 	username := sess.Values["foo"].(string)
-	return c.String(http.StatusOK, "Hello, "+username)
+
+	ip, err := helpers.GetLocalIP()
+	if err != nil {
+		fmt.Println("Error:", err)
+		return err
+	}
+
+	fmt.Println("Local IP Address:", ip)
+
+	return c.String(http.StatusOK, "Hello, "+username+"ip: "+ip)
 
 	return c.String(http.StatusOK, "hello sesion")
 	return c.Render(http.StatusOK, "hello", "")

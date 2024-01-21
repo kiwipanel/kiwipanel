@@ -56,7 +56,6 @@ func NewENV() *ENV {
 	}
 
 	host := os.Getenv("SERVER_HOST")
-	kiwipanel_mode := os.Getenv("KIWIPANEL_MODE")
 	update := os.Getenv("UPDATE")
 	boolUpdate, err := strconv.ParseBool(update)
 	if err != nil {
@@ -78,11 +77,10 @@ func NewENV() *ENV {
 	}
 
 	env = &ENV{
-		HOST:           host,
-		KIWIPANEL_MODE: kiwipanel_mode,
-		VERSION:        version,
-		UPDATE:         boolUpdate,
-		DEMO:           boolDemo,
+		HOST:    host,
+		VERSION: version,
+		UPDATE:  boolUpdate,
+		DEMO:    boolDemo,
 	}
 
 	return env

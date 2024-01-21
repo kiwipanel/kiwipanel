@@ -3,6 +3,9 @@
 # KiwiPanel Installer v0.0.1
 # To install KiwiPanel type:
 # curl -sLO # curl -sLO https://install.kiwipanel.org/install && chmod +x install && sudo bash install
+# @author: Vuong Nguyen and contributors
+# @website: https://kiwipanel.org
+# @since: 2024
 
 #######################################################
 clear;

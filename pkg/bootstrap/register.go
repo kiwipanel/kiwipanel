@@ -16,19 +16,20 @@ var r = routing.GetRoute()
 
 func Register() {
 	env := config.NewENV()
-	view.LoadConfig(*env)
 
-	fmt.Println(env.KIWIPANEL_MODE)
+	app.UseCache = true
+	app.InProduction = true
 
-	// Setting the config for the app from the ENV
-	app.KIWIPANEL_MODE = env.KIWIPANEL_MODE
+	app.KIWIPANEL_MODE = "development"
+
+	fmt.Println("Show app", app)
+	fmt.Println("env loaded in Register.com: ", env)
+
+	view.LoadConfig(app)
 
 	static.Register(r)
 	r.Renderer = view.RenderTemplates
 	routing.Register(&app)
 	sessionstore.Register(r)
 	database.Connect(&app)
-	// config := config.NewConfigServer()
-	// fmt.Println(config.Server.Port)
-
 }
