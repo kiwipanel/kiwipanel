@@ -58,6 +58,7 @@ fi
 # Check the current distro and the kernel
 readonly distro=$(grep -oP 'PRETTY_NAME="\K[^"]+' /etc/os-release | cut -f1 -d' ')
 readonly kernel_version=$(uname -r)
+readonly distro_version=`echo $(lsb_release -c | cut -d':' -f 2)`
 
 echo "Your current Kernel: ${kernel_version}"
 echo "Your current Linux distro: ${distro}"
@@ -72,6 +73,23 @@ function check_os() {
 IP=`curl -s -L http://cpanel.net/showip.cgi`
 echo "$(tput setaf 2)Your IP address: $IP$(tput sgr0)" 
 sleep 3;  
+
+# Function to generate a random string
+generate_random_string() {
+    cat /dev/urandom | tr -dc 'a-z0-9' | head -c 9
+}
+
+# Generate a random string
+readonly random_string=$(generate_random_string)
+
+# Specify the file path
+file_path="/home/passcode.txt"
+
+# Write the random string to the file
+echo "$random_string" > "$file_path"
+
+# Print a message indicating success
+echo "Random string written to $file_path"
 
 
 function check_file_availability() {
@@ -115,14 +133,12 @@ function installBase(){
     fi
 }
 
-function moveHome(){
-    cd /home
-}
-
 
 function Clone(){  
+  cd /home
   sudo git clone https://github.com/kiwipanel/scaffolding.git
-  cd scaffolding  
+  cd scaffolding
+  go build -o bin/kiwipanel
 }
 
 open_port() {
@@ -155,6 +171,8 @@ function moveFile() {
 
 function StartSystem(){
     sudo systemctl start kiwipanel
+    #Will restart automatically when VPS restarts
+    sudo systemctl enable kiwipanel 
 }
 
 function Success(){
@@ -170,7 +188,7 @@ function Success(){
     
     "$(tput setaf 2)================================Install KiwiPanel Done!==============================$(tput sgr0)"        
     
-    Register and Login at : http://$IP:8443     
+    Register and Login at : http://$IP:8443/$random_string     
 
     "$(tput setaf 2)=====================================================================================$(tput sgr0)"    
     "
@@ -250,7 +268,6 @@ check_panel_script
 check_os
 installBase
 removeFile "kiwi"
-moveHome
 Clone
 moveFile
 open_port 8443
