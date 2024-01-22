@@ -21,6 +21,25 @@ if [[ $(whoami) != "root" ]]; then
 	exit 1
 fi
 
+
+# Control Panel path
+# @credit: https://github.com/sanvu88/lempstack/blob/master/install
+CPANEL="/usr/local/cpanel/cpanel"
+DIRECTADMIN="/usr/local/directadmin/custombuild/build"
+PLESK="/usr/local/psa/version"
+WEBMIN="/etc/init.d/webmin"
+SENTORA="/root/passwords.txt"
+HOCVPS="/etc/hocvps/scripts.conf"
+VPSSIM="/home/vpssim.conf"
+EEV3="/usr/local/bin/ee"
+WORDOPS="/usr/local/bin/wo"
+KUSANAGI="/home/kusanagi"
+CWP="/usr/local/cwpsrv"
+VESTA="/usr/local/vesta/"
+EEV4="/opt/easyengine"
+LARVPS="/etc/larvps/.info.conf"
+TINO="/opt/tinopanel"
+
 function check_panel_script(){
   echo "$(tput setaf 2)Checking the current script or panel, if any....$(tput sgr0)" 
   sleep 3;  

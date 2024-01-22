@@ -24,9 +24,7 @@ func Register() {
 
 	fmt.Println("Show app", app)
 	fmt.Println("env loaded in Register.com: ", env)
-
-	view.LoadConfig(app)
-
+	view.Loadmode("hello")
 	static.Register(r)
 	r.Renderer = view.RenderTemplates
 	routing.Register(&app)

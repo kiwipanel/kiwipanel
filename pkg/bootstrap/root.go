@@ -3,8 +3,6 @@ package bootstrap
 import (
 	"fmt"
 	"os"
-
-	"github.com/kiwipanel/scaffolding/pkg/ui/view"
 )
 
 func Root(flag string) {
@@ -18,8 +16,6 @@ func Root(flag string) {
 	fmt.Println(root_path)
 
 	fmt.Println("flag: ", flag)
-
-	view.Loadmode(flag)
 
 	r.Logger.Fatal(r.Start(":8443"))
 }

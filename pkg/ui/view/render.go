@@ -11,14 +11,20 @@ import (
 )
 
 var app config.AppConfig
-var mode string
+
+type mode struct {
+	condition string
+}
+
+var test string
 
 func LoadConfig(appConfig config.AppConfig) {
 	app = appConfig
 }
 
 func Loadmode(getmode string) {
-	mode = getmode
+	fmt.Println("run load mode in render.go, getmode: ", getmode)
+	test = getmode
 }
 
 type Template struct {
@@ -44,7 +50,7 @@ var (
 
 func loadTemplateConditionally(condition string) string {
 
-	fmt.Println("mode: ", mode)
+	fmt.Println("inside loadTemplateConditionally mode 123: ")
 
 	if condition == "development" {
 		return basefile_development
