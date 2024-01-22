@@ -6,7 +6,8 @@ import (
 )
 
 func Root(flag string) {
-	Register()
+	view.Loadmode(flag)
+	Register(flag)
 	Migrate()
 	Setup()
 	root_path, err := os.Executable()
