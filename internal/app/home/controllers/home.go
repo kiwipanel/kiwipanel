@@ -36,6 +36,8 @@ func (app *Controller) Homepage(c echo.Context) error {
 	}
 	if secure.Passcode != passcode {
 		fmt.Println(err)
+		fmt.Println("secure", len(secure.Passcode))
+		fmt.Println("passcode", len(passcode))
 		return c.String(http.StatusNotAcceptable, "Passcode is not correct. err - authentication failed")
 	}
 

@@ -226,6 +226,7 @@ function create_database() {
     fi
 
     chmod +w $file_path
+    chown $(whoami):$(whoami) $file_path #Make sure that the current user own the file (root in this case) (TODO: Switch back in dashboard)
 }
 
 function create_state(){
