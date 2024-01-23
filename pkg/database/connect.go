@@ -15,8 +15,9 @@ var (
 	once                      sync.Once // create sync.Once primitive)
 	DB                        *gorm.DB
 	database_path_development = "state/database/kiwipanel.sqlite"
-	database_path_production  = "/home/scaffolding/state/database/kiwipanel.sqlite"
-	database_path             string
+	//database_path_production  = "/home/scaffolding/state/database/kiwipanel.sqlite"
+	database_path_production = "/home/state/database/kiwipanel.sqlite"
+	database_path            string
 )
 
 func Connect(app *config.AppConfig) {
@@ -30,6 +31,7 @@ func Connect(app *config.AppConfig) {
 
 		db, err := gorm.Open(sqlite.Open(database_path), &gorm.Config{})
 		if err != nil {
+			fmt.Println("error when connecting the database: ", err)
 			panic("failed to connect database")
 		}
 		app.DB = db
