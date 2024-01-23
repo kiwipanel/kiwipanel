@@ -3,6 +3,7 @@ package bootstrap
 import (
 	"fmt"
 	"os"
+	"strings"
 )
 
 func readFileIfExists(filePath string) (string, error) {
@@ -23,15 +24,12 @@ func readFileIfExists(filePath string) (string, error) {
 	return string(content), nil
 }
 
-func ReadPasscode() {
+func ReadPasscode() (string, error) {
 	filePath := "/home/state/passcode.txt"
-
 	content, err := readFileIfExists(filePath)
 	if err != nil {
 		fmt.Println(err)
-		return
+		return "", err
 	}
-
-	fmt.Println("ReadPasscode --> File content:")
-	fmt.Println(content)
+	return strings.TrimSpace(content), nil
 }

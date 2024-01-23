@@ -1,5 +1,5 @@
 run: build
-	@ ./bin/kiwipanel start
+	@sudo ./bin/kiwipanel start
 build:
 	@go build -o bin/kiwipanel
 dev: build

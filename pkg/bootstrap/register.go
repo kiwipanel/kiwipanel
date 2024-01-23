@@ -16,14 +16,11 @@ var r = routing.GetRoute()
 
 func Register(mode string) {
 	env := config.NewENV()
-
 	app.UseCache = true
-	app.InProduction = true
 
 	app.KIWIPANEL_MODE = mode
-
-	fmt.Println("Show app", app)
 	fmt.Println("env loaded in Register.com: ", env)
+
 	view.Loadmode("hello")
 	static.Register(r)
 	r.Renderer = view.RenderTemplates
