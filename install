@@ -6,18 +6,42 @@
 # @author: Vuong Nguyen and contributors
 # @website: https://kiwipanel.org
 # @since: 2024
-
 #######################################################
 clear;
 LANG=en_US.UTF-8
-
 kiwipanel_d_start_time=$(date +%s)
-echo "$(tput setaf 2)Installing KiwiPanel...$(tput sgr0)" 
-sleep 3;  
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+NC='\033[0m' #NC: Not color: reset color to the default
+
+function PrintGreen() {
+    local GREEN='\033[0;32m'
+    local NC='\033[0m'
+    local content="${1}"
+    printf "${GREEN}${content}${NC}\n"
+}
+
+function PrintRed() {
+    local RED='\033[0;31m'
+    local NC='\033[0m'
+    local content="${1}"
+    printf "${RED}${content}${NC}\n"
+}
+
+function welcome(){
+    clear
+    printf "${GREEN}========================================================\n${NC}"
+    echo   "                   KIWIPANEL.ORG Scripts                  "
+    echo   "            Auto Install & Optimize LEMP Stack            "
+    printf "${GREEN}========================================================\n${NC}"        
+    echo ""    
+    PrintGreen "Installing KiwiPanel..."
+    sleep 3
+}
 
 # Check for sudo/root privileges
-if [[ $(whoami) != "root" ]]; then
-	echo "$(tput setaf 1)You should install KiwiPanel as root or using sudo.$(tput sgr0)"	
+if [[ $(whoami) != "root" ]]; then	
+    PrintRed "You should install KiwiPanel as root or using sudo"
 	exit 1
 fi
 
@@ -40,11 +64,11 @@ LARVPS="/etc/larvps/.info.conf"
 TINO="/opt/tinopanel"
 
 function check_panel_script(){
-  echo "$(tput setaf 2)Checking the current script or panel, if any....$(tput sgr0)" 
+  PrintGreen "Checking the current script or panel, if any...."
   sleep 3;  
   if [ -f /var/cpanel/cpanel.config ]; then
-    clear
-    echo "Your server installed WHM/Cpanel, please reinstall to use KiwiPanel."
+    clear    
+    PrintRed "Your server installed WHM/Cpanel, please reinstall to use KiwiPanel"
     exit
     fi
 
@@ -65,6 +89,8 @@ function check_panel_script(){
     echo "Your server installed Webmin, please reinstall to use KiwiPanel."
     exit
     fi
+    PrintGreen "That is good! The VPS is freshly installed. You are good to go..."
+    sleep 2
 }
 
 #Check the ARCHITECTURE
@@ -73,7 +99,7 @@ function check_panel_script(){
 # Note: aarch64 [ARM 64-bit (also known as AArch64), armv7: 32-bit ARM]
 ARCHITECTURE="$(uname -m)"
 if [[ "$ARCHITECTURE" == "armv7"* ]] || [[ "$ARCHITECTURE" == "i686" ]] || [[ "$ARCHITECTURE" == "i386" ]]; then
-  echo "KiwiPanel is not supported on 32 bits systems"
+  PrintRed "KiwiPanel is not supported on 32 bits systems"
   exit 1
 fi
 
@@ -95,8 +121,6 @@ function check_os() {
 IP=`curl -s -L http://cpanel.net/showip.cgi`
 echo "$(tput setaf 2)Your IP address: $IP$(tput sgr0)" 
 sleep 3;  
-
-
 
 function check_file_availability() {
   if [ -e "$1" ]; then
@@ -171,6 +195,7 @@ function removeFile() {
 }
 
 function moveFile() {
+    # usr: unix system resources
     sudo mv -v kiwi /usr/bin
     sudo chmod 755 /usr/bin/kiwi    
 }
@@ -197,6 +222,7 @@ function create_passcode(){
         echo "File passcode.txt created: $file_path"
     else
         echo "File passcode.txt already exists: $file_path"
+        echo "Passcode will be updated"
     fi
 
  readonly random_string=$(generate_random_string)
@@ -244,13 +270,13 @@ function Success(){
     StartSystem
 
     printf " \n"
-    echo "$(tput setaf 2)Kiwiscript has been successfully installed on your VPS!.$(tput sgr0)"   
+    
+    PrintGreen "Kiwiscript has been successfully installed on your VPS!"
     kiwipanel_d_end_time=$(date +%s)
     elapsed=$((kiwipanel_d_end_time - kiwipanel_d_start_time))     
     echo "$(tput setaf 2)Total time installed: ${elapsed} seconds.$(tput sgr0)"      
     printf " \n"     
-    echo "
-    
+    echo "    
     "$(tput setaf 2)================================Install KiwiPanel Done!==============================$(tput sgr0)"        
     
     Register and Login at : http://$IP:8443/$random_string     
@@ -261,6 +287,7 @@ function Success(){
 
 
 #install nginx https://gist.github.com/Dryam/3cd2e55a19e1954f1433
+welcome
 check_panel_script
 check_os
 installBase
