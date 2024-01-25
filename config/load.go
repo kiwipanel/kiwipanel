@@ -50,9 +50,10 @@ func NewConfigServer() *Config {
 }
 
 func NewENV() *ENV {
-	err := godotenv.Load(".env")
+	envfile := "/home/scaffolding/" + ".env"
+	err := godotenv.Load(envfile)
 	if err != nil {
-		log.Fatal("Error loading .env file")
+		log.Fatal("Error loading .env file: ", err)
 	}
 
 	host := os.Getenv("SERVER_HOST")

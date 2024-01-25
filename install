@@ -184,7 +184,6 @@ function installBase(){
     fi
 }
 
-
 function Clone(){  
     PrintGreen "Cloning the code from github.com/kiwipanel"
     cd /home
@@ -288,21 +287,40 @@ EOF
 )
 
 function create_systemd(){
-    echo "Creating systemd for running kiwipanel"
+    PrintGreen "Creating systemd for running kiwipanel..."
+    sleep 3
+
+    local file_path="/etc/systemd/system/kiwipanel.service"    
+    echo "$kiwipanel_service" > "$file_path"    #write file
+    echo "File $file_path created successfully."
 }
 
-function StartSystem(){
+
+function run_and_check() {
+    local command_to_run="$1"
+
+    # Run the command
+    $command_to_run
+
+    # Check the exit status
+    if [ $? -eq 0 ]; then
+        PrintGreen "Command $command_to_run succeeded"
+    else
+        PrintRed "Command $command_to_run failed"
+    fi
+}
+
+function start_systemd(){
     create_systemd
-    sudo systemctl start kiwipanel
+    sudo systemctl daemon-reload
+    run_and_check "sudo systemctl start kiwipanel"
+    #sudo systemctl start kiwipanel
     #Will restart automatically when VPS restarts
     sudo systemctl enable kiwipanel 
 }
 
-function Success(){
-    StartSystem
-
-    printf " \n"
-    
+function success(){    
+    printf " \n"    
     PrintGreen "Kiwiscript has been successfully installed on your VPS!"
     kiwipanel_d_end_time=$(date +%s)
     elapsed=$((kiwipanel_d_end_time - kiwipanel_d_start_time))     
@@ -327,7 +345,8 @@ Clone
 moveFile
 open_port 8443
 create_state
-Success
+start_systemd
+success
 # rm install
 
 

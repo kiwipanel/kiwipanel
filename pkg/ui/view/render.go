@@ -46,12 +46,10 @@ var (
 	theme                string = "default" //Can be configured if needed
 	basefile_development string = Dir() + "/internal/templates/" + theme + "/*/*.tmpl"
 	basefile_production  string = "/home/scaffolding/internal/templates/" + theme + "/*/*.tmpl"
+	runtime              string = "production"
 )
 
 func loadTemplateConditionally(condition string) string {
-
-	fmt.Println("inside loadTemplateConditionally mode 123: ")
-
 	if condition == "development" {
 		return basefile_development
 	}
@@ -60,7 +58,7 @@ func loadTemplateConditionally(condition string) string {
 }
 
 var RenderTemplates = &Template{
-	templates: template.Must(template.ParseGlob(loadTemplateConditionally("development"))),
+	templates: template.Must(template.ParseGlob(loadTemplateConditionally(runtime))),
 }
 
 func (t *Template) Render(w io.Writer, name string, data interface{}, c echo.Context) error {
