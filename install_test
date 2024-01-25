@@ -1,0 +1,24 @@
+#!/bin/bash
+
+read_kiwipanel_log() {
+    local info=${1}
+    # File path
+    file_path="/home/state/kiwipanel.conf"
+    
+    if [ -e "$file_path" ]; then
+        result=$(awk -F':' -v key="$info" '$1 == key {print $2}' "$file_path")
+        # Check if epoch time is found
+        if [ -n "$result" ]; then
+            echo "$info in $file_path: $result"
+        else
+            echo "Error: Unable to find $info in $file_path"
+        fi
+    else
+        echo "Error: File $file_path not found"
+    fi
+}
+
+# Call the function
+read_kiwipanel_log "install"
+read_kiwipanel_log "passcode"
+read_kiwipanel_log "hello"

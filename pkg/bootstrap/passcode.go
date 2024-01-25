@@ -1,31 +1,39 @@
 package bootstrap
 
 import (
+	"bufio"
 	"fmt"
 	"os"
 	"strings"
 )
 
 func readFileIfExists(filePath string) (string, error) {
-	// Check if the file exists
-	_, err := os.Stat(filePath)
-	if os.IsNotExist(err) {
-		return "", fmt.Errorf("File does not exist: %s", filePath)
-	} else if err != nil {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+
+	var content string
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.HasPrefix(line, "passcode:") {
+			// If the line starts with "passcode:", extract the passcode
+			content = strings.TrimPrefix(line, "passcode:")
+			break
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
 		return "", err
 	}
 
-	// Read the content of the file
-	content, err := os.ReadFile(filePath)
-	if err != nil {
-		return "", fmt.Errorf("Error reading file: %s", err)
-	}
-
-	return string(content), nil
+	return content, nil
 }
 
 func ReadPasscode() (string, error) {
-	filePath := "/home/state/passcode.txt"
+	filePath := "/home/state/kiwipanel.conf"
 	content, err := readFileIfExists(filePath)
 	if err != nil {
 		fmt.Println(err)
