@@ -7,6 +7,13 @@
 # @website: https://kiwipanel.org
 # @since: 2024
 #######################################################
+
+function savelog(){
+    exec 19>>/home/state/kiwipanel.log
+    BASH_XTRACEFD=19
+    set -x
+}
+
 clear;
 # Setting and declaring
 LANG=en_US.UTF-8
@@ -15,6 +22,7 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 NC='\033[0m' #NC: Not color: reset color to the default
 IPADDRESS=`curl -s -L http://cpanel.net/showip.cgi`
+kiwi_config_file="/home/state/kiwipanel.conf"
 readonly DIR=$(pwd)
 readonly HOSTNAME=$(hostname)
 # Check the current distro and the kernel
@@ -43,6 +51,16 @@ function generate_random_string() {
 }
 
 readonly random_string=$(generate_random_string)
+
+function tracking(){            
+    echo "install:$kiwipanel_d_start_time" >> "$kiwi_config_file"    
+    echo "Current epoch time saved to $kiwi_config_file"
+}
+
+function appendtracking(){       
+    echo "hello:"vuong" + $kiwipanel_d_start_time" >> "$kiwi_config_file"        
+}
+
 
 ##############################################################################################################
 function welcome(){
@@ -175,7 +193,7 @@ function BaseUbuntu(){
 }
 
  # Install the base system for the specified distribution.
-function installBase(){      
+function install_base(){      
     if [ "$distro" == "Ubuntu" ]; then
         UpdateUbuntu
         BaseUbuntu
@@ -184,7 +202,7 @@ function installBase(){
     fi
 }
 
-function Clone(){  
+function clone_repository(){  
     PrintGreen "Cloning the code from github.com/kiwipanel"
     cd /home
     sudo git clone https://github.com/kiwipanel/scaffolding.git
@@ -208,40 +226,23 @@ function open_port() {
 }
 
 
-function removeFile() {
+function remove_file() {
     cd /usr/bin
     if check_file_availability "$1"; then
         sudo rm "$1"
     fi
 }
 
-function moveFile() {
+function move_file() {
     # usr: unix system resources
     sudo mv -v kiwi /usr/bin
     sudo chmod 755 /usr/bin/kiwi    
 }
 
 function create_passcode(){  
-  folder_path="/home/state"    
-  file_path="$folder_path/passcode.txt"  
-  # Create the folder if it doesn't exist
-    if [ ! -d "$folder_path" ]; then
-        mkdir -p "$folder_path"
-        echo "Folder created: $folder_path"
-    else
-        echo "Folder already exists: $folder_path"
-    fi
-  # Create the file if it doesn't exist
-    if [ ! -e "$file_path" ]; then
-        touch "$file_path"
-        echo "File passcode.txt created: $file_path"
-    else
-        echo "File passcode.txt already exists: $file_path"
-        echo "Passcode will be updated"
-    fi
- 
-  # Write the random string to the file
-  echo "$random_string" > "$file_path"  
+  # Append the random string to the file  
+  echo "passcode:$random_string" >> "$kiwi_config_file"     
+  PrintGreen "Passcode $random_string is generated and save to kiwipanel.conf"
 }
 
 function create_database() {
@@ -254,7 +255,6 @@ function create_database() {
     else
         echo "Folder already exists: $folder_path"
     fi
-
     # Create the file if it doesn't exist
     if [ ! -e "$file_path" ]; then
         touch "$file_path"
@@ -287,42 +287,40 @@ EOF
 )
 
 function create_systemd(){
-    PrintGreen "Creating systemd for running kiwipanel..."
+    PrintGreen "Creating systemd-based service for running kiwipanel..."
     sleep 3
-
     local file_path="/etc/systemd/system/kiwipanel.service"    
     echo "$kiwipanel_service" > "$file_path"    #write file
     echo "File $file_path created successfully."
 }
 
-
 function run_and_check() {
-    local command_to_run="$1"
-
-    # Run the command
-    $command_to_run
-
-    # Check the exit status
+    local command_to_run="$1"    
+    $command_to_run    
     if [ $? -eq 0 ]; then
         PrintGreen "Command $command_to_run succeeded"
     else
         PrintRed "Command $command_to_run failed"
+        exit 1
     fi
 }
 
 function start_systemd(){
     create_systemd
-    sudo systemctl daemon-reload
-    run_and_check "sudo systemctl start kiwipanel"
+    #sudo systemctl daemon-reload
+    run_and_check "sudo systemctl daemon-reload"
     #sudo systemctl start kiwipanel
+    run_and_check "sudo systemctl start kiwipanel"    
     #Will restart automatically when VPS restarts
-    sudo systemctl enable kiwipanel 
+    #sudo systemctl enable kiwipanel 
+    run_and_check "systemctl enable kiwipanel"
 }
 
 function success(){    
+    tracking
     printf " \n"    
     PrintGreen "Kiwiscript has been successfully installed on your VPS!"
-    kiwipanel_d_end_time=$(date +%s)
+    kiwipanel_d_end_time=$(date +%s)    
     elapsed=$((kiwipanel_d_end_time - kiwipanel_d_start_time))     
     echo "$(tput setaf 2)Total time installed: ${elapsed} seconds.$(tput sgr0)"      
     printf " \n"     
@@ -337,16 +335,19 @@ function success(){
 
 
 #install nginx https://gist.github.com/Dryam/3cd2e55a19e1954f1433
+savelog
 welcome
 check_condition_before_install
-installBase
-removeFile "kiwi"
-Clone
-moveFile
+install_base
+remove_file "kiwi"
+clone_repository
+move_file
 open_port 8443
 create_state
 start_systemd
 success
+appendtracking
+
 # rm install
 
 
