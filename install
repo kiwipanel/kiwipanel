@@ -8,12 +8,22 @@
 # @since: 2024
 #######################################################
 clear;
+# Setting and declaring
 LANG=en_US.UTF-8
 kiwipanel_d_start_time=$(date +%s)
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 NC='\033[0m' #NC: Not color: reset color to the default
+IPADDRESS=`curl -s -L http://cpanel.net/showip.cgi`
+readonly DIR=$(pwd)
+readonly HOSTNAME=$(hostname)
+# Check the current distro and the kernel
+readonly distro=$(grep -oP 'PRETTY_NAME="\K[^"]+' /etc/os-release | cut -f1 -d' ')
+readonly kernel_version=$(uname -r)
+readonly distro_version=`echo $(lsb_release -c | cut -d':' -f 2)`
 
+# Ref: https://github.com/sanvu88/lempstack/blob/master/hostvn
+# Utilities ################################################################################################
 function PrintGreen() {
     local GREEN='\033[0;32m'
     local NC='\033[0m'
@@ -25,9 +35,16 @@ function PrintRed() {
     local RED='\033[0;31m'
     local NC='\033[0m'
     local content="${1}"
-    printf "${RED}${content}${NC}\n"
+    printf "${RED}Error: ${content}${NC}\n"
 }
 
+function generate_random_string() {
+    cat /dev/urandom | tr -dc 'a-z0-9' | head -c 9
+}
+
+readonly random_string=$(generate_random_string)
+
+##############################################################################################################
 function welcome(){
     clear
     printf "${GREEN}========================================================\n${NC}"
@@ -40,10 +57,12 @@ function welcome(){
 }
 
 # Check for sudo/root privileges
-if [[ $(whoami) != "root" ]]; then	
-    PrintRed "You should install KiwiPanel as root or using sudo"
-	exit 1
-fi
+function check_root(){
+    if [[ $(whoami) != "root" ]]; then	
+        PrintRed "You should install KiwiPanel as root or using sudo command."
+        exit 1
+    fi
+}
 
 # Control Panel path
 # @credit: https://github.com/sanvu88/lempstack/blob/master/install
@@ -93,34 +112,36 @@ function check_panel_script(){
     sleep 2
 }
 
-#Check the ARCHITECTURE
-#Ref: https://raw.githubusercontent.com/runtipi/runtipi/master/scripts/install.sh
-# Not supported on 32 bits systems. 
-# Note: aarch64 [ARM 64-bit (also known as AArch64), armv7: 32-bit ARM]
-ARCHITECTURE="$(uname -m)"
-if [[ "$ARCHITECTURE" == "armv7"* ]] || [[ "$ARCHITECTURE" == "i686" ]] || [[ "$ARCHITECTURE" == "i386" ]]; then
-  PrintRed "KiwiPanel is not supported on 32 bits systems"
-  exit 1
-fi
-
-# Check the current distro and the kernel
-readonly distro=$(grep -oP 'PRETTY_NAME="\K[^"]+' /etc/os-release | cut -f1 -d' ')
-readonly kernel_version=$(uname -r)
-readonly distro_version=`echo $(lsb_release -c | cut -d':' -f 2)`
-
-echo "Your current Kernel: ${kernel_version}"
-echo "Your current Linux distro: ${distro}"
+function check_architecture(){
+    #Check the ARCHITECTURE
+    #Ref: https://raw.githubusercontent.com/runtipi/runtipi/master/scripts/install.sh
+    # Not supported on 32 bits systems. 
+    # Note: aarch64 [ARM 64-bit (also known as AArch64), armv7: 32-bit ARM]
+    local ARCHITECTURE="$(uname -m)"
+    if [[ "$ARCHITECTURE" == "armv7"* ]] || [[ "$ARCHITECTURE" == "i686" ]] || [[ "$ARCHITECTURE" == "i386" ]]; then
+    PrintRed "KiwiPanel is not supported on 32 bits systems"
+    exit 1
+    fi
+}
 
 function check_os() {
+    echo "Your current Kernel: ${kernel_version}"
+    echo "Your current Linux distro: ${distro}"
     if [[ "$distro" != "Ubuntu" ]]; then
         echo "$(tput setaf 1)The current version of KiwiPanel only works on Ubuntu.$(tput sgr0)"
         exit 1
     fi
 }
 
-IP=`curl -s -L http://cpanel.net/showip.cgi`
-echo "$(tput setaf 2)Your IP address: $IP$(tput sgr0)" 
-sleep 3;  
+function check_condition_before_install(){
+    PrintGreen "Evaluating your VPS before installing KiwiPanel....."
+    sleep 2
+    check_root
+    check_os
+    check_architecture
+    check_panel_script
+}
+
 
 function check_file_availability() {
   if [ -e "$1" ]; then
@@ -165,13 +186,14 @@ function installBase(){
 
 
 function Clone(){  
-  cd /home
-  sudo git clone https://github.com/kiwipanel/scaffolding.git
-  cd scaffolding
-  go build -o bin/kiwipanel
+    PrintGreen "Cloning the code from github.com/kiwipanel"
+    cd /home
+    sudo git clone https://github.com/kiwipanel/scaffolding.git
+    cd scaffolding
+    go build -o bin/kiwipanel
 }
 
-open_port() {
+function open_port() {
     local port=$1
     # Check if UFW is installed
     if ! command -v ufw &> /dev/null; then
@@ -200,12 +222,6 @@ function moveFile() {
     sudo chmod 755 /usr/bin/kiwi    
 }
 
-# Function to generate a random string
-generate_random_string() {
-    cat /dev/urandom | tr -dc 'a-z0-9' | head -c 9
-}
-
-
 function create_passcode(){  
   folder_path="/home/state"    
   file_path="$folder_path/passcode.txt"  
@@ -224,12 +240,9 @@ function create_passcode(){
         echo "File passcode.txt already exists: $file_path"
         echo "Passcode will be updated"
     fi
-
- readonly random_string=$(generate_random_string)
+ 
   # Write the random string to the file
-  echo "$random_string" > "$file_path"
-  # Print a message indicating success
-  echo "Random string written to $file_path"
+  echo "$random_string" > "$file_path"  
 }
 
 function create_database() {
@@ -260,7 +273,26 @@ function create_state(){
   create_database
 }
 
+readonly kiwipanel_service=$(cat <<EOF
+[Unit]
+Description=Kiwipanel application
+[Service]
+Type=simple
+Restart=always
+RestartSec=5s
+WorkingDirectory=/home/scaffolding/bin
+ExecStart=/home/scaffolding/bin/kiwipanel start
+[Install]
+WantedBy=multi-user.target
+EOF
+)
+
+function create_systemd(){
+    echo "Creating systemd for running kiwipanel"
+}
+
 function StartSystem(){
+    create_systemd
     sudo systemctl start kiwipanel
     #Will restart automatically when VPS restarts
     sudo systemctl enable kiwipanel 
@@ -279,7 +311,7 @@ function Success(){
     echo "    
     "$(tput setaf 2)================================Install KiwiPanel Done!==============================$(tput sgr0)"        
     
-    Register and Login at : http://$IP:8443/$random_string     
+    Register and Login at : http://$IPADDRESS:8443/$random_string     
 
     "$(tput setaf 2)=====================================================================================$(tput sgr0)"    
     "
@@ -288,8 +320,7 @@ function Success(){
 
 #install nginx https://gist.github.com/Dryam/3cd2e55a19e1954f1433
 welcome
-check_panel_script
-check_os
+check_condition_before_install
 installBase
 removeFile "kiwi"
 Clone
