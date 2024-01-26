@@ -7,14 +7,84 @@
 # @website: https://kiwipanel.org
 # @since: 2024
 #######################################################
+#backup
+clear;
 
-function savelog(){
-    exec 19>>/home/state/kiwipanel.log
-    BASH_XTRACEFD=19
-    set -x
+#Turn off the current service if any, make sure that it works
+sudo systemctl stop kiwipanel
+
+function move_nested_content() {
+    # Check if both source and destination folders are provided
+    if [ $# -ne 2 ]; then
+        echo "Usage: move_nested_content source_folder destination_folder"
+        return 1
+    fi
+    local source_folder="$1"
+    local destination_folder="$2"
+    # Check if the source folder exists
+    if [ ! -d "$source_folder" ]; then
+        echo "Source folder '$source_folder' not found."
+        return 1
+    fi
+    # Check if the destination folder exists; create it if not
+    if [ ! -d "$destination_folder" ]; then
+        mkdir -p "$destination_folder" || return 1
+    fi
+    # Move the content of the source folder to the destination folder
+    mv "$source_folder"/* "$destination_folder"/ || return 1
+    echo "Nested content of '$source_folder' moved to '$destination_folder'."
 }
 
-clear;
+kiwi_config_log="/home/state/kiwipanel.log"
+kiwi_current_state="/home/state"
+kiwi_current_backup="/home/backup"
+
+function create_dir_bash() {
+    mkdir -p /home/state
+    chmod 755 /home/state    
+    mkdir -p /home/state/database
+    chmod 775 /home/state/database
+    chown -R $(whoami):$(whoami) /home/state/database
+    touch "$kiwi_config_log"
+}
+
+function create_dir_backup() {
+    mkdir -p /home/backup
+    chmod 755 /home/backup    
+    mkdir -p /home/backup/state/database
+    chmod 775 /home/backup/state/database
+    chown -R $(whoami):$(whoami) /home/backup/state/database
+    touch "$kiwi_config_log"
+}
+
+function backup(){
+    if [ -d "$kiwi_current_state" ]; then
+        echo "Folder exists, backup: $kiwi_current_state"
+        if [ ! -d "$kiwi_current_backup" ]; then        
+            echo "Folder kiwi_current_backup, does not exists, create it!"     
+            create_dir_backup   
+            echo "Starting backup !"     
+            sleep 3
+            move_nested_content $kiwi_current_state $kiwi_current_backup
+        else            
+            echo "Folder /home/state exists, just backup : $kiwi_current_state"
+            sleep 3
+            move_nested_content $kiwi_current_state $kiwi_current_backup
+        fi
+    else
+        create_dir_bash
+        create_dir_backup
+        echo "Folder does not exist, run two functions: create_dir_bash and create_dir_backup: $kiwi_current_state, $kiwi_current_backup"
+    fi
+}
+
+backup
+
+exec 19>>"$kiwi_config_log"
+BASH_XTRACEFD=19
+set -x
+
+
 # Setting and declaring
 LANG=en_US.UTF-8
 kiwipanel_d_start_time=$(date +%s)
@@ -46,6 +116,30 @@ function PrintRed() {
     printf "${RED}Error: ${content}${NC}\n"
 }
 
+function change_directory() {
+    cd "$1" || return
+}
+
+
+function comment_and_write_conf() {
+    local conf_file="$1"
+    local temp_file="/tmp/temp_conf_file.$$"  # Use a temporary file
+    # Check if the .conf file exists
+    if [ -e "$conf_file" ]; then
+        # Comment out each line in the existing file
+        sed 's/^/#/' "$conf_file" > "$temp_file"
+    fi
+
+    # Write new data to the file
+    echo "New Configuration Line 1" >> "$temp_file"
+    echo "New Configuration Line 2" >> "$temp_file"
+    # Add more lines as needed
+    # Replace the original file with the temporary file
+    mv "$temp_file" "$conf_file"
+}
+
+
+
 function generate_random_string() {
     cat /dev/urandom | tr -dc 'a-z0-9' | head -c 9
 }
@@ -53,18 +147,15 @@ function generate_random_string() {
 readonly random_string=$(generate_random_string)
 
 function tracking(){            
+    comment_and_write_conf $kiwi_config_file
     echo "install:$kiwipanel_d_start_time" >> "$kiwi_config_file"    
     echo "Current epoch time saved to $kiwi_config_file"
 }
 
-function appendtracking(){       
-    echo "hello:"vuong" + $kiwipanel_d_start_time" >> "$kiwi_config_file"        
-}
 
 
 ##############################################################################################################
-function welcome(){
-    clear
+function welcome(){    
     printf "${GREEN}========================================================\n${NC}"
     echo   "                   KIWIPANEL.ORG Scripts                  "
     echo   "            Auto Install & Optimize LEMP Stack            "
@@ -237,7 +328,11 @@ function move_file() {
     # usr: unix system resources
     sudo mv -v kiwi /usr/bin
     sudo chmod 755 /usr/bin/kiwi    
+
 }
+
+
+
 
 function create_passcode(){  
   # Append the random string to the file  
@@ -247,24 +342,38 @@ function create_passcode(){
 
 function create_database() {
     folder_path="/home/state/database"
+    destination_folder_path="/home/backup/state/database"
     file_path="$folder_path/kiwipanel.sqlite"
+
     # Create the folder if it doesn't exist
     if [ ! -d "$folder_path" ]; then
         mkdir -p "$folder_path"
+        chmod 775 "$folder_path"
+        chown -R $(whoami):$(whoami) "$folder_path"
         echo "Folder created: $folder_path"
     else
-        echo "Folder already exists: $folder_path"
+        echo "Database folder already exists, backup first and create a new one: $folder_path"
+        move_nested_content "$folder_path" "$destination_folder_path"
+        # Remove the source folder
+        rm -r "$folder_path" || return 1
+        # Create a new one
+        mkdir -p "$folder_path"
+        chmod 775 "$folder_path"
+        chown -R $(whoami):$(whoami) "$folder_path"
+        echo "Database Folder - recreated: $folder_path"
     fi
+
     # Create the file if it doesn't exist
     if [ ! -e "$file_path" ]; then
         touch "$file_path"
+        chmod 664 "$file_path"  # Adjust permissions to allow all users to read and write
+        chown $(whoami):$(whoami) "$file_path"
         echo "File created: $file_path"
     else
         echo "File already exists: $file_path"
+        chmod 664 "$file_path"  # Adjust permissions in case the file already exists
+        chown $(whoami):$(whoami) "$file_path"
     fi
-
-    chmod +w $file_path
-    chown $(whoami):$(whoami) $file_path #Make sure that the current user own the file (root in this case) (TODO: Switch back in dashboard)
 }
 
 function create_state(){
@@ -335,7 +444,6 @@ function success(){
 
 
 #install nginx https://gist.github.com/Dryam/3cd2e55a19e1954f1433
-savelog
 welcome
 check_condition_before_install
 install_base
@@ -346,8 +454,6 @@ open_port 8443
 create_state
 start_systemd
 success
-appendtracking
 
-# rm install
 
 
