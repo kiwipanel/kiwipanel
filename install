@@ -9,14 +9,47 @@
 #######################################################
 #backup
 clear;
+# Utilities ########################################################
+function PrintGreen() {
+    local GREEN='\033[0;32m'
+    local NC='\033[0m'
+    local content="${1}"
+    printf "${GREEN}${content}${NC}\n"
+}
+function PrintRed() {
+    local RED='\033[0;31m'
+    local NC='\033[0m'
+    local content="${1}"
+    printf "${RED}Error: ${content}${NC}\n"
+}
+# Check for sudo/root privileges######################################
+if [[ $(whoami) != "root" ]]; then	
+    PrintRed "You should install KiwiPanel as root or using sudo command."
+    exit 1
+fi
+
+kiwi_config_log="/home/state/kiwipanel.log"
+kiwi_config_file="/home/state/kiwipanel.conf"
+kiwi_current_state="/home/state"
+kiwi_current_backup="/home/backup"
 
 #Turn off the current service if any, make sure that it works
-sudo systemctl stop kiwipanel
+function run_and_check() {
+    local command_to_run="$1"    
+    $command_to_run    
+    if [ $? -eq 0 ]; then
+        PrintGreen "Command $command_to_run succeeded"
+    else
+        PrintRed "Command $command_to_run failed"
+        exit 1
+    fi
+}
+run_and_check "sudo systemctl stop kiwipanel"
 
-function move_nested_content() {
+function move_nested_file() {
     # Check if both source and destination folders are provided
     if [ $# -ne 2 ]; then
-        echo "Usage: move_nested_content source_folder destination_folder"
+        echo "Usage: move_nested_file source_folder destination_folder"
         return 1
     fi
     local source_folder="$1"
@@ -35,55 +68,47 @@ function move_nested_content() {
     echo "Nested content of '$source_folder' moved to '$destination_folder'."
 }
 
-kiwi_config_log="/home/state/kiwipanel.log"
-kiwi_current_state="/home/state"
-kiwi_current_backup="/home/backup"
-
 function create_dir_bash() {
     mkdir -p /home/state
     chmod 755 /home/state    
     mkdir -p /home/state/database
     chmod 775 /home/state/database
-    chown -R $(whoami):$(whoami) /home/state/database
+    chown -R $(whoami):$(whoami) /home/state/database    
     touch "$kiwi_config_log"
+    touch "$kiwi_config_file"    
 }
 
 function create_dir_backup() {
     mkdir -p /home/backup
     chmod 755 /home/backup    
-    mkdir -p /home/backup/state/database
-    chmod 775 /home/backup/state/database
-    chown -R $(whoami):$(whoami) /home/backup/state/database
-    touch "$kiwi_config_log"
 }
 
 function backup(){
     if [ -d "$kiwi_current_state" ]; then
-        echo "Folder exists, backup: $kiwi_current_state"
+        echo "The folder /home/state exists, starting backup the current data: $kiwi_current_state"
         if [ ! -d "$kiwi_current_backup" ]; then        
             echo "Folder kiwi_current_backup, does not exists, create it!"     
             create_dir_backup   
             echo "Starting backup !"     
             sleep 3
-            move_nested_content $kiwi_current_state $kiwi_current_backup
+            move_nested_file $kiwi_current_state $kiwi_current_backup
         else            
             echo "Folder /home/state exists, just backup : $kiwi_current_state"
             sleep 3
-            move_nested_content $kiwi_current_state $kiwi_current_backup
+            move_nested_file $kiwi_current_state $kiwi_current_backup
         fi
     else
         create_dir_bash
         create_dir_backup
-        echo "Folder does not exist, run two functions: create_dir_bash and create_dir_backup: $kiwi_current_state, $kiwi_current_backup"
+        PrintGreen "Greate!. It seems you are installing KiwiPanel for the first time!"
+        echo "2 folders: $kiwi_current_state, $kiwi_current_backup are created"
     fi
 }
-
 backup
-
+#Logging...
 exec 19>>"$kiwi_config_log"
 BASH_XTRACEFD=19
 set -x
-
 
 # Setting and declaring
 LANG=en_US.UTF-8
@@ -92,69 +117,29 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 NC='\033[0m' #NC: Not color: reset color to the default
 IPADDRESS=`curl -s -L http://cpanel.net/showip.cgi`
-kiwi_config_file="/home/state/kiwipanel.conf"
+
 readonly DIR=$(pwd)
 readonly HOSTNAME=$(hostname)
 # Check the current distro and the kernel
 readonly distro=$(grep -oP 'PRETTY_NAME="\K[^"]+' /etc/os-release | cut -f1 -d' ')
 readonly kernel_version=$(uname -r)
 readonly distro_version=`echo $(lsb_release -c | cut -d':' -f 2)`
-
-# Ref: https://github.com/sanvu88/lempstack/blob/master/hostvn
-# Utilities ################################################################################################
-function PrintGreen() {
-    local GREEN='\033[0;32m'
-    local NC='\033[0m'
-    local content="${1}"
-    printf "${GREEN}${content}${NC}\n"
+function generate_random_string() {
+    cat /dev/urandom | tr -dc 'a-z0-9' | head -c 9
 }
-
-function PrintRed() {
-    local RED='\033[0;31m'
-    local NC='\033[0m'
-    local content="${1}"
-    printf "${RED}Error: ${content}${NC}\n"
-}
+readonly random_string=$(generate_random_string)
 
 function change_directory() {
     cd "$1" || return
 }
 
-
-function comment_and_write_conf() {
-    local conf_file="$1"
-    local temp_file="/tmp/temp_conf_file.$$"  # Use a temporary file
-    # Check if the .conf file exists
-    if [ -e "$conf_file" ]; then
-        # Comment out each line in the existing file
-        sed 's/^/#/' "$conf_file" > "$temp_file"
-    fi
-
-    # Write new data to the file
-    echo "New Configuration Line 1" >> "$temp_file"
-    echo "New Configuration Line 2" >> "$temp_file"
-    # Add more lines as needed
-    # Replace the original file with the temporary file
-    mv "$temp_file" "$conf_file"
-}
-
-
-
-function generate_random_string() {
-    cat /dev/urandom | tr -dc 'a-z0-9' | head -c 9
-}
-
-readonly random_string=$(generate_random_string)
-
-function tracking(){            
-    comment_and_write_conf $kiwi_config_file
+function tracking(){                
     echo "install:$kiwipanel_d_start_time" >> "$kiwi_config_file"    
     echo "Current epoch time saved to $kiwi_config_file"
 }
 
 
-
-##############################################################################################################
+###################################################################################
 function welcome(){    
     printf "${GREEN}========================================================\n${NC}"
     echo   "                   KIWIPANEL.ORG Scripts                  "
@@ -165,13 +150,6 @@ function welcome(){
     sleep 3
 }
 
-# Check for sudo/root privileges
-function check_root(){
-    if [[ $(whoami) != "root" ]]; then	
-        PrintRed "You should install KiwiPanel as root or using sudo command."
-        exit 1
-    fi
-}
 
 # Control Panel path
 # @credit: https://github.com/sanvu88/lempstack/blob/master/install
@@ -194,33 +172,28 @@ TINO="/opt/tinopanel"
 function check_panel_script(){
   PrintGreen "Checking the current script or panel, if any...."
   sleep 3;  
-  if [ -f /var/cpanel/cpanel.config ]; then
-    clear    
+  if [ -f /var/cpanel/cpanel.config ]; then    
     PrintRed "Your server installed WHM/Cpanel, please reinstall to use KiwiPanel"
     exit
     fi
 
-    if [ -f /etc/psa/.psa.shadow ]; then
-    clear
+    if [ -f /etc/psa/.psa.shadow ]; then    
     echo "Your server installed Plesk, please reinstall to use KiwiPanel."
     exit
     fi
 
-    if [ -f /etc/init.d/directadmin ]; then
-    clear
+    if [ -f /etc/init.d/directadmin ]; then    
     echo "Your server installed DirectAdmin, please reinstall to use KiwiPanel."
     exit
     fi
 
-    if [ -f /etc/init.d/webmin ]; then
-    clear
+    if [ -f /etc/init.d/webmin ]; then    
     echo "Your server installed Webmin, please reinstall to use KiwiPanel."
     exit
     fi
     PrintGreen "That is good! The VPS is freshly installed. You are good to go..."
     sleep 2
 }
-
 function check_architecture(){
     #Check the ARCHITECTURE
     #Ref: https://raw.githubusercontent.com/runtipi/runtipi/master/scripts/install.sh
@@ -232,7 +205,6 @@ function check_architecture(){
     exit 1
     fi
 }
-
 function check_os() {
     echo "Your current Kernel: ${kernel_version}"
     echo "Your current Linux distro: ${distro}"
@@ -241,17 +213,13 @@ function check_os() {
         exit 1
     fi
 }
-
 function check_condition_before_install(){
     PrintGreen "Evaluating your VPS before installing KiwiPanel....."
-    sleep 2
-    check_root
+    sleep 2    
     check_os
     check_architecture
     check_panel_script
 }
-
-
 function check_file_availability() {
   if [ -e "$1" ]; then
     return 0  # File exists, return true (0)
@@ -259,22 +227,18 @@ function check_file_availability() {
     return 1  # File does not exist, return false (non-zero)
   fi
 }
-
 function UpdateUbuntu(){
     printf " \n"
     echo "$(tput setaf 2)Updating the system....$(tput sgr0)"     
     sleep 3;
     sudo apt-get update && sudo apt-get -y upgrade
 }
-
-
 function BaseCentos(){   
     printf " \n"
     echo "$(tput setaf 2)Installing the base tools....$(tput sgr0)" 
     sleep 3;         
     sudo yum install wget curl git-all zip nano -y
 }
-
 function BaseUbuntu(){    
     printf " \n"
     echo "$(tput setaf 2)Installing the base tools....$(tput sgr0)" 
@@ -282,7 +246,6 @@ function BaseUbuntu(){
     sudo apt install wget curl git-all zip nano -y
 
 }
-
  # Install the base system for the specified distribution.
 function install_base(){      
     if [ "$distro" == "Ubuntu" ]; then
@@ -292,7 +255,6 @@ function install_base(){
         BaseCentos
     fi
 }
-
 function clone_repository(){  
     PrintGreen "Cloning the code from github.com/kiwipanel"
     cd /home
@@ -300,7 +262,6 @@ function clone_repository(){
     cd scaffolding
     go build -o bin/kiwipanel
 }
-
 function open_port() {
     local port=$1
     # Check if UFW is installed
@@ -315,31 +276,23 @@ function open_port() {
     # Display status
     sudo ufw status
 }
-
-
 function remove_file() {
     cd /usr/bin
     if check_file_availability "$1"; then
         sudo rm "$1"
     fi
 }
-
 function move_file() {
     # usr: unix system resources
     sudo mv -v kiwi /usr/bin
     sudo chmod 755 /usr/bin/kiwi    
 
 }
-
-
-
-
 function create_passcode(){  
   # Append the random string to the file  
   echo "passcode:$random_string" >> "$kiwi_config_file"     
   PrintGreen "Passcode $random_string is generated and save to kiwipanel.conf"
 }
-
 function create_database() {
     folder_path="/home/state/database"
     destination_folder_path="/home/backup/state/database"
@@ -353,7 +306,7 @@ function create_database() {
         echo "Folder created: $folder_path"
     else
         echo "Database folder already exists, backup first and create a new one: $folder_path"
-        move_nested_content "$folder_path" "$destination_folder_path"
+        move_nested_file "$folder_path" "$destination_folder_path"
         # Remove the source folder
         rm -r "$folder_path" || return 1
         # Create a new one
@@ -375,12 +328,10 @@ function create_database() {
         chown $(whoami):$(whoami) "$file_path"
     fi
 }
-
 function create_state(){
   create_passcode
   create_database
 }
-
 readonly kiwipanel_service=$(cat <<EOF
 [Unit]
 Description=Kiwipanel application
@@ -394,7 +345,6 @@ ExecStart=/home/scaffolding/bin/kiwipanel start
 WantedBy=multi-user.target
 EOF
 )
-
 function create_systemd(){
     PrintGreen "Creating systemd-based service for running kiwipanel..."
     sleep 3
@@ -402,18 +352,6 @@ function create_systemd(){
     echo "$kiwipanel_service" > "$file_path"    #write file
     echo "File $file_path created successfully."
 }
-
-function run_and_check() {
-    local command_to_run="$1"    
-    $command_to_run    
-    if [ $? -eq 0 ]; then
-        PrintGreen "Command $command_to_run succeeded"
-    else
-        PrintRed "Command $command_to_run failed"
-        exit 1
-    fi
-}
-
 function start_systemd(){
     create_systemd
     #sudo systemctl daemon-reload
@@ -422,9 +360,8 @@ function start_systemd(){
     run_and_check "sudo systemctl start kiwipanel"    
     #Will restart automatically when VPS restarts
     #sudo systemctl enable kiwipanel 
-    run_and_check "systemctl enable kiwipanel"
+    run_and_check "sudo systemctl enable kiwipanel"
 }
-
 function success(){    
     tracking
     printf " \n"    
@@ -441,7 +378,6 @@ function success(){
     "$(tput setaf 2)=====================================================================================$(tput sgr0)"    
     "
 }
-
 
 #install nginx https://gist.github.com/Dryam/3cd2e55a19e1954f1433
 welcome
