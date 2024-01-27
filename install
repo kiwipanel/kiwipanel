@@ -7,8 +7,9 @@
 # @website: https://kiwipanel.org
 # @since: 2024
 #######################################################
-#backup
-clear;
+clear
+date
+LANG=en_US.UTF-8
 # Utilities ########################################################
 function PrintGreen() {
     local GREEN='\033[0;32m'
@@ -28,12 +29,12 @@ if [[ $(whoami) != "root" ]]; then
     exit 1
 fi
 
+#
 kiwi_config_log="/home/state/kiwipanel.log"
 kiwi_config_file="/home/state/kiwipanel.conf"
 kiwi_current_state="/home/state"
 kiwi_current_backup="/home/backup"
 
-#Turn off the current service if any, make sure that it works
 function run_and_check() {
     local command_to_run="$1"    
     $command_to_run    
@@ -44,29 +45,73 @@ function run_and_check() {
         exit 1
     fi
 }
+
+#Turn off the current service if any, make sure that it works
 run_and_check "sudo systemctl stop kiwipanel"
 
 function move_nested_file() {
     # Check if both source and destination folders are provided
     if [ $# -ne 2 ]; then
-        echo "Usage: move_nested_file source_folder destination_folder"
+        echo "Usage: moving folder : source_folder destination_folder"
         return 1
     fi
     local source_folder="$1"
     local destination_folder="$2"
+    
     # Check if the source folder exists
     if [ ! -d "$source_folder" ]; then
         echo "Source folder '$source_folder' not found."
         return 1
     fi
+
+    # Check if the source folder is empty
+    if [ -z "$(ls -A "$source_folder")" ]; then
+        echo "Source folder '$source_folder' is empty. Nothing to move."
+        return 0
+    fi
+
     # Check if the destination folder exists; create it if not
     if [ ! -d "$destination_folder" ]; then
         mkdir -p "$destination_folder" || return 1
     fi
+
     # Move the content of the source folder to the destination folder
     mv "$source_folder"/* "$destination_folder"/ || return 1
     echo "Nested content of '$source_folder' moved to '$destination_folder'."
 }
+function rename_folder() {
+    if [ $# -ne 1 ]; then
+        echo "Usage: rename_folder <old_folder_name>"
+        return 1
+    fi
+
+    old_folder_name="$1"
+    current_datetime=$(date +"%Y_%m_%d_%H_%M")
+    new_folder_name="${old_folder_name%_*}_${current_datetime}"
+
+    if [ ! -d "$old_folder_name" ]; then
+        echo "Error: Folder '$old_folder_name' not found."
+        return 1
+    fi
+
+    echo "Renaming folder $old_folder_name to $new_folder_name..."
+    mv "$old_folder_name" "$new_folder_name"
+
+    if [ $? -eq 0 ]; then
+        echo "Rename operation successful."
+
+        # Check if new_folder_name is empty and delete it
+        if [ -z "$(ls -A "$new_folder_name")" ]; then
+            rmdir "$new_folder_name"
+            echo "Deleted empty folder: $new_folder_name"
+        fi
+
+    else
+        echo "Error: Failed to rename the folder."
+        return 1
+    fi
+}
+
 
 function create_dir_bash() {
     mkdir -p /home/state
@@ -88,12 +133,16 @@ function backup(){
         echo "The folder /home/state exists, starting backup the current data: $kiwi_current_state"
         if [ ! -d "$kiwi_current_backup" ]; then        
             echo "Folder kiwi_current_backup, does not exists, create it!"     
-            create_dir_backup   
-            echo "Starting backup !"     
+            create_dir_backup  
+            echo "Starting backup !"
             sleep 3
             move_nested_file $kiwi_current_state $kiwi_current_backup
         else            
             echo "Folder /home/state exists, just backup : $kiwi_current_state"
+            PrintGreen "Step 1: Rename the backup folder"
+            sleep 3
+            rename_folder $kiwi_current_backup
+            PrintGreen "Step 2: Create a new empty backup folder"
             sleep 3
             move_nested_file $kiwi_current_state $kiwi_current_backup
         fi
@@ -105,13 +154,14 @@ function backup(){
     fi
 }
 backup
+
 #Logging...
 exec 19>>"$kiwi_config_log"
 BASH_XTRACEFD=19
 set -x
 
 # Setting and declaring
-LANG=en_US.UTF-8
+
 kiwipanel_d_start_time=$(date +%s)
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -138,7 +188,6 @@ function tracking(){
     echo "Current epoch time saved to $kiwi_config_file"
 }
 
-
 ###################################################################################
 function welcome(){    
     printf "${GREEN}========================================================\n${NC}"
@@ -149,7 +198,6 @@ function welcome(){
     PrintGreen "Installing KiwiPanel..."
     sleep 3
 }
-
 
 # Control Panel path
 # @credit: https://github.com/sanvu88/lempstack/blob/master/install
@@ -244,8 +292,8 @@ function BaseUbuntu(){
     echo "$(tput setaf 2)Installing the base tools....$(tput sgr0)" 
     sleep 3;    
     sudo apt install wget curl git-all zip nano -y
-
 }
+
  # Install the base system for the specified distribution.
 function install_base(){      
     if [ "$distro" == "Ubuntu" ]; then
@@ -255,6 +303,7 @@ function install_base(){
         BaseCentos
     fi
 }
+
 function clone_repository(){  
     PrintGreen "Cloning the code from github.com/kiwipanel"
     cd /home
@@ -294,8 +343,7 @@ function create_passcode(){
   PrintGreen "Passcode $random_string is generated and save to kiwipanel.conf"
 }
 function create_database() {
-    folder_path="/home/state/database"
-    destination_folder_path="/home/backup/state/database"
+    folder_path="/home/state/database"    
     file_path="$folder_path/kiwipanel.sqlite"
 
     # Create the folder if it doesn't exist
@@ -304,9 +352,7 @@ function create_database() {
         chmod 775 "$folder_path"
         chown -R $(whoami):$(whoami) "$folder_path"
         echo "Folder created: $folder_path"
-    else
-        echo "Database folder already exists, backup first and create a new one: $folder_path"
-        move_nested_file "$folder_path" "$destination_folder_path"
+    else                
         # Remove the source folder
         rm -r "$folder_path" || return 1
         # Create a new one
