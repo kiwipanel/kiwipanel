@@ -29,6 +29,48 @@ if [[ $(whoami) != "root" ]]; then
     exit 1
 fi
 
+
+# Set the Go version you want to install
+GO_VERSION="1.21.6"  # Update this to the desired Go version
+# Set the Go installation directory
+GO_INSTALL_DIR="/usr/local"
+
+# Download and install Go
+function install_go() {
+    # Download Go binary
+    wget "https://golang.org/dl/go${GO_VERSION}.linux-amd64.tar.gz" -O /tmp/go.tar.gz
+
+    # Extract Go binary
+    sudo tar -C "${GO_INSTALL_DIR}" -xzf /tmp/go.tar.gz
+
+    # Add Go binary path to system profile
+    echo "export PATH=\$PATH:${GO_INSTALL_DIR}/go/bin" | sudo tee -a /etc/profile
+    source /etc/profile
+
+    # Cleanup
+    rm /tmp/go.tar.gz
+
+    echo "Go ${GO_VERSION} has been installed."
+}
+
+# Check if Go is already installed
+if command -v go &> /dev/null; then
+    installed_version=$(go version | awk '{print $3}')
+    echo "Go is already installed. Version: ${installed_version}"
+else
+    # Install Go without asking for confirmation
+    install_go
+
+    # Check again after installation
+    if command -v go &> /dev/null; then
+        installed_version=$(go version | awk '{print $3}')
+        echo "Go is installed successfully. Version: ${installed_version}"
+    else
+        echo "There was an issue installing Go. Please check the script and try again."
+    fi
+fi
+
+
 #
 kiwi_config_log="/home/state/kiwipanel.log"
 kiwi_config_file="/home/state/kiwipanel.conf"
@@ -320,20 +362,32 @@ function clone_repository(){
     cd scaffolding
     go build -o bin/kiwipanel
 }
+
 function open_port() {
-    local port=$1
-    # Check if UFW is installed
-    if ! command -v ufw &> /dev/null; then
-        echo "UFW is not installed. Installing..."
-        sudo apt-get install ufw
+    local PORT_NUMBER="$1"
+    # Check if iptables is installed
+    if ! command -v iptables &> /dev/null; then
+        echo "Error: iptables not found. This function requires iptables."
+        return 1
     fi
-    # Allow the specified port
-    sudo ufw allow $port
-    # Reload UFW
-    sudo ufw reload
-    # Display status
-    sudo ufw status
+
+    # Check if the function is run as root
+    if [ "$(id -u)" -ne 0 ]; then
+        echo "Error: This function must be run as root. Use sudo."
+        return 1
+    fi
+
+    # Open the specified port
+    iptables -A INPUT -p tcp --dport $PORT_NUMBER -j ACCEPT
+
+    # Save the iptables rules to persist across reboots (this may vary based on your distribution)
+    service iptables save &> /dev/null  # For RHEL/CentOS
+    # or
+    iptables-save > /etc/iptables/rules.v4  # For Debian/Ubuntu
+
+    echo "Port $PORT_NUMBER opened successfully."
 }
+
 function remove_file() {
     cd /usr/bin
     if check_file_availability "$1"; then
