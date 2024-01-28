@@ -34,42 +34,58 @@ fi
 GO_VERSION="1.21.6"  # Update this to the desired Go version
 # Set the Go installation directory
 GO_INSTALL_DIR="/usr/local"
+# Detect the system's architecture
+ARCHITECTURE=$(uname -m)
 
 # Download and install Go
 function install_go() {
-    # Download Go binary
-    wget "https://golang.org/dl/go${GO_VERSION}.linux-amd64.tar.gz" -O /tmp/go.tar.gz
+    # Download Go binary based on architecture
+    case "$ARCHITECTURE" in
+        "x86_64")
+            GO_BINARY="go${GO_VERSION}.linux-amd64.tar.gz"
+            ;;
+        "aarch64")
+            GO_BINARY="go${GO_VERSION}.linux-arm64.tar.gz"
+            ;;
+        "armv7l")
+            GO_BINARY="go${GO_VERSION}.linux-armv6l.tar.gz"
+            ;;
+        *)
+            echo "Unsupported architecture: $ARCHITECTURE"
+            exit 1
+            ;;
+    esac
 
+    wget "https://go.dev/dl/${GO_BINARY}" -O /tmp/go.tar.gz
     # Extract Go binary
     sudo tar -C "${GO_INSTALL_DIR}" -xzf /tmp/go.tar.gz
-
     # Add Go binary path to system profile
     echo "export PATH=\$PATH:${GO_INSTALL_DIR}/go/bin" | sudo tee -a /etc/profile
     source /etc/profile
-
     # Cleanup
     rm /tmp/go.tar.gz
-
-    echo "Go ${GO_VERSION} has been installed."
+    echo "Go ${GO_VERSION} has been installed for ${ARCHITECTURE} architecture."
 }
 
+function check_install_go(){
+    PrintGreen "Start to install Golang..."
+    sleep 3
 # Check if Go is already installed
-if command -v go &> /dev/null; then
-    installed_version=$(go version | awk '{print $3}')
-    echo "Go is already installed. Version: ${installed_version}"
-else
-    # Install Go without asking for confirmation
-    install_go
-
-    # Check again after installation
     if command -v go &> /dev/null; then
         installed_version=$(go version | awk '{print $3}')
-        echo "Go is installed successfully. Version: ${installed_version}"
+        echo "Go is already installed. Version: ${installed_version}"
     else
-        echo "There was an issue installing Go. Please check the script and try again."
+        # Install Go without asking for confirmation
+        install_go
+        # Check again after installation
+        if command -v go &> /dev/null; then
+            installed_version=$(go version | awk '{print $3}')
+            echo "Go is installed successfully. Version: ${installed_version}"
+        else
+            echo "There was an issue installing Go. Please check the script and try again."
+        fi
     fi
-fi
-
+}
 
 #
 kiwi_config_log="/home/state/kiwipanel.log"
@@ -319,6 +335,7 @@ function check_condition_before_install(){
     check_architecture
     check_panel_script
 }
+
 function check_file_availability() {
   if [ -e "$1" ]; then
     return 0  # File exists, return true (0)
@@ -492,6 +509,7 @@ function success(){
 welcome
 check_condition_before_install
 install_base
+check_install_go
 remove_file "kiwi"
 clone_repository
 move_file
