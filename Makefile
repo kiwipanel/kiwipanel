@@ -8,5 +8,7 @@ start:
 	@sudo systemctl start kiwipanel
 status:
 	@sudo systemctl status kiwipanel
+restart:
+	@sudo systemctl restart kiwipanel
 stop:
 	@sudo systemctl stop kiwipanel

@@ -41,7 +41,8 @@ func (app *Controller) Homepage(c echo.Context) error {
 		return c.String(http.StatusNotAcceptable, "Passcode is not correct. err - authentication failed")
 	}
 
-	return c.String(http.StatusOK, "Hello there, kiwipanel.org!. It is good")
+	return c.Render(http.StatusOK, "base", "")
+	return c.String(http.StatusOK, "Hello there, kiwipanel.org!. It is good, update")
 
 }
 
@@ -70,5 +71,5 @@ func (app *Controller) Hello(c echo.Context) error {
 	return c.String(http.StatusOK, "Hello, "+username+"ip: "+ip)
 
 	return c.String(http.StatusOK, "hello sesion")
-	return c.Render(http.StatusOK, "hello", "")
+
 }
