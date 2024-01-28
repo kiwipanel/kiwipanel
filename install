@@ -37,20 +37,32 @@ GO_INSTALL_DIR="/usr/local"
 
 # Download and install Go
 function install_go() {
-    # Download Go binary
-    wget "https://golang.org/dl/go${GO_VERSION}.linux-amd64.tar.gz" -O /tmp/go.tar.gz
+    # Download Go binary based on architecture
+    case "$ARCHITECTURE" in
+        "x86_64")
+            GO_BINARY="go${GO_VERSION}.linux-amd64.tar.gz"
+            ;;
+        "aarch64")
+            GO_BINARY="go${GO_VERSION}.linux-arm64.tar.gz"
+            ;;
+        "armv7l")
+            GO_BINARY="go${GO_VERSION}.linux-armv6l.tar.gz"
+            ;;
+        *)
+            echo "Unsupported architecture: $ARCHITECTURE"
+            exit 1
+            ;;
+    esac
 
+    wget "https://go.dev/dl/${GO_BINARY}" -O /tmp/go.tar.gz
     # Extract Go binary
     sudo tar -C "${GO_INSTALL_DIR}" -xzf /tmp/go.tar.gz
-
     # Add Go binary path to system profile
     echo "export PATH=\$PATH:${GO_INSTALL_DIR}/go/bin" | sudo tee -a /etc/profile
     source /etc/profile
-
     # Cleanup
     rm /tmp/go.tar.gz
-
-    echo "Go ${GO_VERSION} has been installed."
+    echo "Go ${GO_VERSION} has been installed for ${ARCHITECTURE} architecture."
 }
 
 # Check if Go is already installed
@@ -60,7 +72,6 @@ if command -v go &> /dev/null; then
 else
     # Install Go without asking for confirmation
     install_go
-
     # Check again after installation
     if command -v go &> /dev/null; then
         installed_version=$(go version | awk '{print $3}')
@@ -69,7 +80,6 @@ else
         echo "There was an issue installing Go. Please check the script and try again."
     fi
 fi
-
 
 #
 kiwi_config_log="/home/state/kiwipanel.log"
