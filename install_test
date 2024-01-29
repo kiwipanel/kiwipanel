@@ -134,3 +134,8 @@ get_system_info() {
 }
 
 get_system_info
+
+IPADDRESS=`curl -s -L -sk --connect-timeout 10 --retry 3 --retry-delay 0 http://cpanel.net/showip.cgi`
+
+echo "IP ${IP}"
+echo "IP ${IPADDRESS}"

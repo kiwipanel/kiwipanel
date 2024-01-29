@@ -39,6 +39,13 @@ ARCHITECTURE=$(uname -m)
 
 # Download and install Go
 function install_go() {
+    # Check if Go is already installed
+    if type go &> /dev/null; then
+        installed_version=$(go version | awk '{print $3}')
+        echo "Go is already installed. Version: ${installed_version}"
+        return
+    fi
+
     # Download Go binary based on architecture
     case "$ARCHITECTURE" in
         "x86_64")
@@ -59,24 +66,31 @@ function install_go() {
     wget "https://go.dev/dl/${GO_BINARY}" -O /tmp/go.tar.gz
     # Extract Go binary
     sudo tar -C "${GO_INSTALL_DIR}" -xzf /tmp/go.tar.gz
-    # Add Go binary path to system profile
-    echo "export PATH=\$PATH:${GO_INSTALL_DIR}/go/bin" | sudo tee -a /etc/profile
-    source /etc/profile
+    # Add Go binary path to system profile.d
+    echo "export PATH=\$PATH:${GO_INSTALL_DIR}/go/bin" | sudo tee "/etc/profile.d/go.sh"
+    source "/etc/profile.d/go.sh"
     # Cleanup
     rm /tmp/go.tar.gz
     echo "Go ${GO_VERSION} has been installed for ${ARCHITECTURE} architecture."
 }
 
+
 function check_install_go(){
     PrintGreen "Start to install Golang..."
     sleep 3
-# Check if Go is already installed
-    if command -v go &> /dev/null; then
+
+    # Check if Go is already installed
+    #if command -v go &> /dev/null; then
+    if type go &> /dev/null; then
         installed_version=$(go version | awk '{print $3}')
         echo "Go is already installed. Version: ${installed_version}"
     else
+        # Add some debugging output
+        echo "Go not found in PATH. Trying to install..."
+
         # Install Go without asking for confirmation
         install_go
+
         # Check again after installation
         if command -v go &> /dev/null; then
             installed_version=$(go version | awk '{print $3}')
@@ -233,8 +247,7 @@ kiwipanel_d_start_time=$(date +%s)
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 NC='\033[0m' #NC: Not color: reset color to the default
-IPADDRESS=`curl -s -L http://cpanel.net/showip.cgi`
-
+IPADDRESS=`curl -s -L -sk --connect-timeout 10 --retry 3 --retry-delay 0 http://cpanel.net/showip.cgi`
 readonly DIR=$(pwd)
 readonly HOSTNAME=$(hostname)
 # Check the current distro and the kernel
@@ -353,13 +366,13 @@ function BaseCentos(){
     printf " \n"
     echo "$(tput setaf 2)Installing the base tools....$(tput sgr0)" 
     sleep 3;         
-    sudo yum install wget curl git-all zip nano -y
+    sudo yum install wget curl git zip nano -y
 }
 function BaseUbuntu(){    
     printf " \n"
     echo "$(tput setaf 2)Installing the base tools....$(tput sgr0)" 
     sleep 3;    
-    sudo apt install wget curl git-all zip nano -y
+    sudo apt install wget curl git zip nano -y
 }
 
  # Install the base system for the specified distribution.
@@ -488,7 +501,19 @@ function start_systemd(){
     #sudo systemctl enable kiwipanel 
     run_and_check "sudo systemctl enable kiwipanel"
 }
-function success(){    
+
+function setup_kiwipanel(){  
+# Check if there is any other non-root process running on the port 8443
+  local KIWIPANEL_RUNNING=$(lsof -u^root -i:8443 -P -n -sTCP:LISTEN)
+  echo "KIWIPANEL_RUNNING: $KIWIPANEL_RUNNING"
+  if [ ! -z "${KIWIPANEL_RUNNING}" ]; then
+    PrintRed "Cannot install KiwiPanel. Some other process is running on port 8443 which does not belong to root!."
+    exit 1
+  fi
+  successMessage
+}
+
+function successMessage(){    
     tracking
     printf " \n"    
     PrintGreen "Kiwiscript has been successfully installed on your VPS!"
@@ -505,6 +530,16 @@ function success(){
     "
 }
 
+clean_up(){  
+   #Clean the history of the commands that have been used during the current shell session.
+  history -c 
+   # Clean the local repository of retrieved package files
+  apt clean
+  #Remove the script itself
+  rm $0
+  PrintGreen "Cleaning up is done!"
+}
+
 #install nginx https://gist.github.com/Dryam/3cd2e55a19e1954f1433
 welcome
 check_condition_before_install
@@ -516,7 +551,7 @@ move_file
 open_port 8443
 create_state
 start_systemd
-success
-
-
+setup_kiwipanel
+# Set up trap to call cleanUp function on script exit (EXIT signal)
+trap clean_up EXIT
 
