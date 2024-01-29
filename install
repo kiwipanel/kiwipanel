@@ -254,6 +254,32 @@ readonly HOSTNAME=$(hostname)
 readonly distro=$(grep -oP 'PRETTY_NAME="\K[^"]+' /etc/os-release | cut -f1 -d' ')
 readonly kernel_version=$(uname -r)
 readonly distro_version=`echo $(lsb_release -c | cut -d':' -f 2)`
+#Reference: https://www.cloudron.io/get.html
+readonly MINIMUM_DISK_SIZE_GB="10" 
+readonly MINIMUM_MEMORY="500"      
+readonly curl="curl --fail --connect-timeout 20 --retry 10 --retry-delay 2 --max-time 2400"
+readonly rootfs_type=$(LC_ALL=C df --output=fstype / | tail -n1)
+readonly physical_memory=$(LC_ALL=C free -m | awk '/Mem:/ { print $2 }')
+readonly disk_size_bytes=$(LC_ALL=C df --output=size / | tail -n1)
+readonly disk_size_gb=$((${disk_size_bytes}/1024/1024))
+readonly current_swap=`free | awk '/^Swap:/ {print $3}'`
+
+# verify the system has minimum requirements met
+if [[ "${rootfs_type}" != "ext4" && "${rootfs_type}" != "xfs" ]]; then
+    echo "Error: KiwiPanel requires '/' to be ext4 or xfs" # see #364
+    exit 1
+fi
+
+if [[ "${physical_memory}" -lt "${MINIMUM_MEMORY}" ]]; then
+    echo "Error: KiwiPanel requires atleast 512MB physical memory"
+    exit 1
+fi
+
+if [[ "${disk_size_gb}" -lt "${MINIMUM_DISK_SIZE_GB}" ]]; then
+    echo "Error: KiwiPanel requires atleast 10GB disk space (Disk space on / is ${disk_size_gb}GB)"
+    exit 1
+fi
+
 function generate_random_string() {
     cat /dev/urandom | tr -dc 'a-z0-9' | head -c 9
 }
@@ -356,6 +382,31 @@ function check_file_availability() {
     return 1  # File does not exist, return false (non-zero)
   fi
 }
+
+#Create swap
+function create_swap() {
+    # Check if a swap file already exists
+    if [ -e /swapfile ]; then
+        echo "Swap file already exists. Skipping creation."
+        return
+    fi
+    
+    # Get the total amount of RAM in kilobytes
+    total_ram_kb=$(grep MemTotal /proc/meminfo | awk '{print $2}')
+    # Calculate the size for the swap file (assuming the same size as RAM)
+    swap_size_kb=$total_ram_kb
+    # Create a swap file
+    sudo fallocate -l ${swap_size_kb}K /swapfile
+    # Set appropriate permissions for the swap file
+    sudo chmod 600 /swapfile
+    # Make it a swap file
+    sudo mkswap /swapfile
+    # Enable the swap file
+    sudo swapon /swapfile
+    # Add an entry to /etc/fstab to make the swap file persistent
+    echo "/swapfile none swap sw 0 0" | sudo tee -a /etc/fstab
+}
+
 function UpdateUbuntu(){
     printf " \n"
     echo "$(tput setaf 2)Updating the system....$(tput sgr0)"     
@@ -543,6 +594,7 @@ clean_up(){
 #install nginx https://gist.github.com/Dryam/3cd2e55a19e1954f1433
 welcome
 check_condition_before_install
+create_swap
 install_base
 check_install_go
 remove_file "kiwi"

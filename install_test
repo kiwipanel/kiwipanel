@@ -139,3 +139,25 @@ IPADDRESS=`curl -s -L -sk --connect-timeout 10 --retry 3 --retry-delay 0 http://
 
 echo "IP ${IP}"
 echo "IP ${IPADDRESS}"
+
+readonly RAM=`LC_ALL=C free -m | awk '/Mem:/ { print $2 }'`
+echo "RAM ${RAM}"
+readonly current_swap=`free | awk '/^Swap:/ {print $3}'`
+echo "current_swap ${current_swap}"
+
+create_swap() {
+    # Get the total amount of RAM in kilobytes
+    total_ram_kb=$(grep MemTotal /proc/meminfo | awk '{print $2}')
+    # Calculate the size for the swap file (assuming the same size as RAM)
+    swap_size_kb=$total_ram_kb
+    # Create a swap file
+    sudo fallocate -l ${swap_size_kb}K /swapfile
+    # Set appropriate permissions for the swap file
+    sudo chmod 600 /swapfile
+    # Make it a swap file
+    sudo mkswap /swapfile
+    # Enable the swap file
+    sudo swapon /swapfile
+    # Add an entry to /etc/fstab to make the swap file persistent
+    echo "/swapfile none swap sw 0 0" | sudo tee -a /etc/fstab
+}
