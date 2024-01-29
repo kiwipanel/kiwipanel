@@ -15,6 +15,7 @@ KiwiPanel is a lightweight control panel helping you manage LEMP stack with less
 - https://github.com/duy13/HocVPS-Script/tree/master
 - https://github.com/itvn9online/vpssim-free/
 - https://github.com/usmannasir/cyberpanel
+- https://docs.cloudron.io/
 
 ### Dependencies
 - https://github.com/bitfield/script
