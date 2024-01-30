@@ -12,7 +12,13 @@ date
 LANG=en_US.UTF-8
 locale-gen en_US.UTF-8 
 export LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8
-# Utilities ########################################################
+
+# Configuration########################################
+readonly INSTALL_VERSION="0.1.1" 
+readonly KIWIPANEL_VERSION="0.1.1"
+readonly KIWIPANEL_PORT=8443
+
+# Utilities ###########################################
 function PrintGreen() {
     local GREEN='\033[0;32m'
     local NC='\033[0m'
@@ -286,8 +292,8 @@ fi
 function generate_random_string() {
     cat /dev/urandom | tr -dc 'a-z0-9' | head -c 9
 }
-readonly random_string=$(generate_random_string)
 
+readonly kiwipanel_passcode=$(generate_random_string)
 function change_directory() {
     cd "$1" || return
 }
@@ -502,8 +508,8 @@ function move_file() {
 }
 function create_passcode(){  
   # Append the random string to the file  
-  echo "passcode:$random_string" >> "$kiwi_config_file"     
-  PrintGreen "Passcode $random_string is generated and save to kiwipanel.conf"
+  echo "passcode:$kiwipanel_passcode" >> "$kiwi_config_file"     
+  PrintGreen "Passcode $kiwipanel_passcode is generated and save to kiwipanel.conf"
 }
 function create_database() {
     folder_path="/home/state/database"    
@@ -573,11 +579,11 @@ function start_systemd(){
 }
 
 function setup_kiwipanel(){  
-# Check if there is any other non-root process running on the port 8443
-  local KIWIPANEL_RUNNING=$(lsof -u^root -i:8443 -P -n -sTCP:LISTEN)
+# Check if there is any other non-root process running on the port KIWIPANEL_PORT
+  local KIWIPANEL_RUNNING=$(lsof -u^root -i:"$KIWIPANEL_PORT" -P -n -sTCP:LISTEN)
   echo "KIWIPANEL_RUNNING: $KIWIPANEL_RUNNING"
   if [ ! -z "${KIWIPANEL_RUNNING}" ]; then
-    PrintRed "Cannot install KiwiPanel. Some other process is running on port 8443 which does not belong to root!."
+    PrintRed "Cannot install KiwiPanel. Some other process is running on port $KIWIPANEL_PORT which does not belong to root!."
     exit 1
   fi
   successMessage
@@ -594,7 +600,7 @@ function successMessage(){
     echo "    
     "$(tput setaf 2)================================Install KiwiPanel Done!==============================$(tput sgr0)"        
     
-    Register and Login at : http://$IPADDRESS:8443/$random_string     
+    Register and Login at : http://$IPADDRESS:$KIWIPANEL_PORT/$kiwipanel_passcode     
 
     "$(tput setaf 2)=====================================================================================$(tput sgr0)"    
     "
@@ -620,7 +626,7 @@ check_install_go
 remove_file "kiwi"
 clone_repository
 move_file
-open_port 8443
+open_port `$KIWIPANEL_PORT`
 create_state
 start_systemd
 setup_kiwipanel
