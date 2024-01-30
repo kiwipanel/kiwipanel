@@ -10,6 +10,8 @@
 clear
 date
 LANG=en_US.UTF-8
+locale-gen en_US.UTF-8 
+export LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8
 # Utilities ########################################################
 function PrintGreen() {
     local GREEN='\033[0;32m'
@@ -23,12 +25,19 @@ function PrintRed() {
     local content="${1}"
     printf "${RED}Error: ${content}${NC}\n"
 }
+
+function PrintWarning() {
+    local YELLOW_BROWN='\033[38;5;179m'  # ANSI color code for yellow-brown
+    local NC='\033[0m'  # Reset to default color
+    local content="${1}"
+    printf "${YELLOW_BROWN}Warning: ${content}${NC}\n"
+}
+
 # Check for sudo/root privileges######################################
 if [[ $(whoami) != "root" ]]; then	
     PrintRed "You should install KiwiPanel as root or using sudo command."
     exit 1
 fi
-
 
 # Set the Go version you want to install
 GO_VERSION="1.21.6"  # Update this to the desired Go version
@@ -78,7 +87,6 @@ function install_go() {
 function check_install_go(){
     PrintGreen "Start to install Golang..."
     sleep 3
-
     # Check if Go is already installed
     #if command -v go &> /dev/null; then
     if type go &> /dev/null; then
@@ -87,10 +95,8 @@ function check_install_go(){
     else
         # Add some debugging output
         echo "Go not found in PATH. Trying to install..."
-
         # Install Go without asking for confirmation
         install_go
-
         # Check again after installation
         if command -v go &> /dev/null; then
             installed_version=$(go version | awk '{print $3}')
@@ -109,18 +115,15 @@ kiwi_current_backup="/home/backup"
 
 function run_and_check() {
     local command_to_run="$1"    
-    $command_to_run
-    
+    $command_to_run    
     local exit_code=$?
-
     if [ $exit_code -eq 0 ]; then
         PrintGreen "Command $command_to_run succeeded"
     else
-        PrintRed "Command $command_to_run failed with exit code $exit_code"
-        
+        PrintRed "Command $command_to_run failed with exit code $exit_code"        
         if [ $exit_code -eq 5 ]; then
             # Exit code 5 typically indicates that the service is not loaded
-            PrintRed "Warning: Service is not loaded or does not exist."
+            PrintWarning "Service is not loaded or does not exist."
         else
             exit 1
         fi
@@ -256,7 +259,7 @@ readonly kernel_version=$(uname -r)
 readonly distro_version=`echo $(lsb_release -c | cut -d':' -f 2)`
 #Reference: https://www.cloudron.io/get.html
 readonly MINIMUM_DISK_SIZE_GB="10" 
-readonly MINIMUM_MEMORY="500"      
+readonly MINIMUM_MEMORY="420" #lightsail 423MB      
 readonly curl="curl --fail --connect-timeout 20 --retry 10 --retry-delay 2 --max-time 2400"
 readonly rootfs_type=$(LC_ALL=C df --output=fstype / | tail -n1)
 readonly physical_memory=$(LC_ALL=C free -m | awk '/Mem:/ { print $2 }')
@@ -355,7 +358,7 @@ function check_architecture(){
     # Note: aarch64 [ARM 64-bit (also known as AArch64), armv7: 32-bit ARM]
     local ARCHITECTURE="$(uname -m)"
     if [[ "$ARCHITECTURE" == "armv7"* ]] || [[ "$ARCHITECTURE" == "i686" ]] || [[ "$ARCHITECTURE" == "i386" ]]; then
-    PrintRed "KiwiPanel is not supported on 32 bits systems"
+    PrintRed "KiwiPanel currently does not support the 32 bits systems"
     exit 1
     fi
 }
@@ -390,7 +393,7 @@ function create_swap() {
         echo "Swap file already exists. Skipping creation."
         return
     fi
-    
+
     # Get the total amount of RAM in kilobytes
     total_ram_kb=$(grep MemTotal /proc/meminfo | awk '{print $2}')
     # Calculate the size for the swap file (assuming the same size as RAM)
@@ -417,13 +420,13 @@ function BaseCentos(){
     printf " \n"
     echo "$(tput setaf 2)Installing the base tools....$(tput sgr0)" 
     sleep 3;         
-    sudo yum install wget curl git zip nano -y
+    sudo yum install wget curl git zip unzip nano -y
 }
 function BaseUbuntu(){    
     printf " \n"
     echo "$(tput setaf 2)Installing the base tools....$(tput sgr0)" 
     sleep 3;    
-    sudo apt install wget curl git zip nano -y
+    sudo apt install wget curl git zip unzip nano -y
 }
 
  # Install the base system for the specified distribution.
@@ -434,6 +437,22 @@ function install_base(){
     elif [ "$distro" == "AlmaLinux" ] || [ "$distro" == "Centos" ] || [ "$distro" == "RockyLinux" ]; then
         BaseCentos
     fi
+}
+
+#Just in case it is needed
+function remove_apache2(){
+    #The || true at the end ensures that the entire command sequence returns a successful exit status (0), 
+    # even if the systemctl command returns a non-zero exit status.
+    sudo systemctl --quiet disable --now apache2 || true
+    sudo service apache2 stop
+    sudo apt remove --autoremove apache2 -y
+    sudo apt purge apache2 apache2-utils -y
+    sudo apt remove apache2 apache2-utils -y
+    sudo apt autoremove apache2 apache2-utils -y
+    sudo rm -r /usr/sbin/apache2
+    sudo rm -r /usr/lib/apache2
+    sudo rm -r /etc/apache2
+    sudo rm -r /usr/share/man/man8/apache2.8.gz
 }
 
 function clone_repository(){  
@@ -596,6 +615,7 @@ welcome
 check_condition_before_install
 create_swap
 install_base
+remove_apache2
 check_install_go
 remove_file "kiwi"
 clone_repository

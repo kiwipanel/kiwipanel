@@ -4,6 +4,12 @@ ALERT: NOT READY FOR PRODUCTION, STILL IN THE EARLY STAGE OF DEVELOPMENT.
 
 KiwiPanel is a lightweight control panel helping you manage LEMP stack with less headache.
 
+### Install
+
+#### Port 8443:
+Amazon Lightsail: tested - you have to manually open the port 8443 inside its dashboard.
+Cloudcone: tested - automatically.
+
 ### References
 - https://github.com/hestiacp/hestiacp
 - https://github.com/ConvoyPanel/panel
@@ -31,6 +37,7 @@ KiwiPanel is a lightweight control panel helping you manage LEMP stack with less
 - https://github.com/ajaxorg/ace
 - https://codemirror.net/5/doc/manual.html
 - https://echarts.apache.org/
+
 
 
 
