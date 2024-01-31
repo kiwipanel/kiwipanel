@@ -17,6 +17,21 @@ export LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8
 readonly INSTALL_VERSION="0.1.1" 
 readonly KIWIPANEL_VERSION="0.1.1"
 readonly KIWIPANEL_PORT=8443
+readonly UPDATE_LINK="https://install.kiwipanel.org/update.txt"
+
+function get_update_version() {    
+    PARAMETER=$1        
+    VERSION=$(curl -s "${UPDATE_LINK}" | grep "${PARAMETER}=" | cut -f2 -d'=')
+    # Return the version
+    echo "${VERSION}"
+}
+
+# Example usage:
+phpmyadmin_version=$(get_update_version phpmyadmin_version)
+mariadb_version=$(get_update_version mariadb_version)
+
+echo "PHPMYADMIN_VERSION: $phpmyadmin_version"
+echo "MARIADB_VERSION: $mariadb_version"
 
 # Utilities ###########################################
 function PrintGreen() {
@@ -37,6 +52,21 @@ function PrintWarning() {
     local NC='\033[0m'  # Reset to default color
     local content="${1}"
     printf "${YELLOW_BROWN}Warning: ${content}${NC}\n"
+}
+
+function ShowLogo {
+    local kiwipanel_text=$(cat << "EOF"
+    ██╗░░██╗██╗░██╗░░░░░░░██╗██╗██████╗░░█████╗░███╗░░██╗███████╗██╗░░░░░
+    ██║░██╔╝██║░██║░░██╗░░██║██║██╔══██╗██╔══██╗████╗░██║██╔════╝██║░░░░░
+    █████═╝░██║░╚██╗████╗██╔╝██║██████╔╝███████║██╔██╗██║█████╗░░██║░░░░░
+    ██╔═██╗░██║░░████╔═████║░██║██╔═══╝░██╔══██║██║╚████║██╔══╝░░██║░░░░░
+    ██║░╚██╗██║░░╚██╔╝░╚██╔╝░██║██║░░░░░██║░░██║██║░╚███║███████╗███████╗
+    ╚═╝░░╚═╝╚═╝░░░╚═╝░░░╚═╝░░╚═╝╚═╝░░░░░╚═╝░░╚═╝╚═╝░░╚══╝╚══════╝╚══════╝
+EOF
+)   
+    echo ""
+    PrintGreen "${kiwipanel_text}"
+    echo ""
 }
 
 # Check for sudo/root privileges######################################
@@ -240,7 +270,7 @@ function backup(){
         create_dir_bash
         create_dir_backup
         PrintGreen "Greate!. It seems you are installing KiwiPanel for the first time!"
-        echo "2 folders: $kiwi_current_state, $kiwi_current_backup are created"
+        echo "Creating 2 folders: $kiwi_current_state, $kiwi_current_backup"
     fi
 }
 backup
@@ -305,6 +335,7 @@ function tracking(){
 
 ###################################################################################
 function welcome(){    
+    ShowLogo
     printf "${GREEN}========================================================\n${NC}"
     echo   "                   KIWIPANEL.ORG Scripts                  "
     echo   "            Auto Install & Optimize LEMP Stack            "
