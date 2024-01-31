@@ -136,8 +136,6 @@ get_system_info() {
 get_system_info
 
 IPADDRESS=`curl -s -L -sk --connect-timeout 10 --retry 3 --retry-delay 0 http://cpanel.net/showip.cgi`
-
-echo "IP ${IP}"
 echo "IP ${IPADDRESS}"
 
 readonly RAM=`LC_ALL=C free -m | awk '/Mem:/ { print $2 }'`
@@ -161,3 +159,37 @@ create_swap() {
     # Add an entry to /etc/fstab to make the swap file persistent
     echo "/swapfile none swap sw 0 0" | sudo tee -a /etc/fstab
 }
+
+readonly UPDATE_LINK="https://install.kiwipanel.org/update.txt"
+function get_update_version() {    
+    PARAMETER=$1        
+    VERSION=$(curl -s "${UPDATE_LINK}" | grep "${PARAMETER}=" | cut -f2 -d'=')
+    # Return the version
+    echo "${VERSION}"
+}
+
+# Example usage:
+phpmyadmin_version=$(get_update_version phpmyadmin_version)
+mariadb_version=$(get_update_version mariadb_version)
+
+echo "PHPMYADMIN_VERSION: $phpmyadmin_version"
+echo "MARIADB_VERSION: $mariadb_version"
+
+function PrintGreen() {
+    local GREEN='\033[0;32m'
+    local NC='\033[0m'
+    local content="${1}"
+    printf "${GREEN}${content}${NC}\n"
+}
+
+function generatePassword {
+    LENGTH="16"
+    if [ ! -z "$1" ]; then
+        LENGTH="$1"
+    fi
+    echo $(openssl rand -base64 64 | tr -dc a-zA-Z0-9=+ | fold -w ${LENGTH} | head -1)
+}
+
+# Example usage:
+password=$(generatePassword 12)
+echo "Generated Password: $password"
