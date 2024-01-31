@@ -293,6 +293,7 @@ readonly HOSTNAME=$(hostname)
 readonly distro=$(grep -oP 'PRETTY_NAME="\K[^"]+' /etc/os-release | cut -f1 -d' ')
 readonly kernel_version=$(uname -r)
 readonly distro_version=`echo $(lsb_release -c | cut -d':' -f 2)`
+
 #Reference: https://www.cloudron.io/get.html
 readonly MINIMUM_DISK_SIZE_GB="10" 
 readonly MINIMUM_MEMORY="420" #lightsail 423MB      
@@ -302,6 +303,7 @@ readonly physical_memory=$(LC_ALL=C free -m | awk '/Mem:/ { print $2 }')
 readonly disk_size_bytes=$(LC_ALL=C df --output=size / | tail -n1)
 readonly disk_size_gb=$((${disk_size_bytes}/1024/1024))
 readonly current_swap=`free | awk '/^Swap:/ {print $3}'`
+readonly cpu_cores=$(grep -c "processor" /proc/cpuinfo)
 
 # verify the system has minimum requirements met
 if [[ "${rootfs_type}" != "ext4" && "${rootfs_type}" != "xfs" ]]; then
@@ -362,11 +364,12 @@ VESTA="/usr/local/vesta/"
 EEV4="/opt/easyengine"
 LARVPS="/etc/larvps/.info.conf"
 TINO="/opt/tinopanel"
+WEBINOLY="/opt/webinoly/webinoly.conf"
 
 function check_panel_script(){
   PrintGreen "Checking the current script or panel, if any...."
   sleep 3;  
-  if [ -f /var/cpanel/cpanel.config ]; then    
+    if [ -f /var/cpanel/cpanel.config ]; then    
     PrintRed "Your server installed WHM/Cpanel, please reinstall to use KiwiPanel"
     exit
     fi
@@ -385,6 +388,17 @@ function check_panel_script(){
     echo "Your server installed Webmin, please reinstall to use KiwiPanel."
     exit
     fi
+
+    if [ -f "$WEBINOLY" ]; then    
+    PrintRed "Your server installed WEBINOLY, please reinstall to use KiwiPanel"
+    exit
+    fi
+
+    if [ -f "$TINO" ]; then    
+    PrintRed "Your server installed TINO, please reinstall to use KiwiPanel"
+    exit
+    fi
+    
     PrintGreen "That is good! The VPS is freshly installed. You are good to go..."
     sleep 2
 }
@@ -403,7 +417,7 @@ function check_os() {
     echo "Your current Kernel: ${kernel_version}"
     echo "Your current Linux distro: ${distro}"
     if [[ "$distro" != "Ubuntu" ]]; then
-        echo "$(tput setaf 1)The current version of KiwiPanel only works on Ubuntu.$(tput sgr0)"
+        PrintRed "The current version of KiwiPanel only works on Ubuntu."
         exit 1
     fi
 }
