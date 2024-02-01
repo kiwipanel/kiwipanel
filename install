@@ -420,6 +420,13 @@ function check_os() {
         PrintRed "The current version of KiwiPanel only works on Ubuntu."
         exit 1
     fi
+
+    #Ref: https://www.aapanel.com/new/download.html#install
+    UbuntuCheck=$(cat /etc/issue | grep Ubuntu | awk '{print $2}' | cut -f 1 -d '.')
+    if [ "${UbuntuCheck}" -lt "18" ]; then
+        echo "Ubuntu ${UbuntuCheck} is not supported to the KiwiPanel, use Ubuntu20/22 to install"
+        exit 1
+    fi
 }
 function check_condition_before_install(){
     PrintGreen "Evaluating your VPS before installing KiwiPanel....."
@@ -662,19 +669,22 @@ clean_up(){
 }
 
 #install nginx https://gist.github.com/Dryam/3cd2e55a19e1954f1433
-welcome
-check_condition_before_install
-create_swap
-install_base
-remove_apache2
-check_install_go
-remove_file "kiwi"
-clone_repository
-move_file
-open_port `$KIWIPANEL_PORT`
-create_state
-start_systemd
-setup_kiwipanel
-# Set up trap to call cleanUp function on script exit (EXIT signal)
-trap clean_up EXIT
+function main(){
+    welcome
+    check_condition_before_install
+    create_swap
+    install_base
+    remove_apache2
+    check_install_go
+    remove_file "kiwi"
+    clone_repository
+    move_file
+    open_port `$KIWIPANEL_PORT`
+    create_state
+    start_systemd
+    setup_kiwipanel
+    # Set up trap to call cleanUp function on script exit (EXIT signal)
+    trap clean_up EXIT
+}
 
+main
