@@ -232,16 +232,51 @@ function rename_folder() {
     fi
 }
 
+# function create_dir_bash() {
+#     mkdir -p /home/state
+#     chmod 755 /home/state    
+#     mkdir -p /home/state/database
+#     chmod 775 /home/state/database
+#     chown -R $(whoami):$(whoami) /home/state/database    
+#     touch "$kiwi_config_log"
+#     touch "$kiwi_config_file"    
+# }
 
 function create_dir_bash() {
-    mkdir -p /home/state
-    chmod 755 /home/state    
-    mkdir -p /home/state/database
-    chmod 775 /home/state/database
-    chown -R $(whoami):$(whoami) /home/state/database    
-    touch "$kiwi_config_log"
-    touch "$kiwi_config_file"    
+    # Set the base directory
+    base_dir="/home/state"
+
+    # Check if the base directory exists
+    if [ ! -d "$base_dir" ]; then
+        mkdir -p "$base_dir"
+        chmod 755 "$base_dir"
+        chown $(whoami):$(whoami) "$base_dir"
+    fi
+
+    # Create the 'database' directory
+    db_dir="$base_dir/database"
+    mkdir -p "$db_dir"
+    chmod 775 "$db_dir"
+    chown -R $(whoami):$(whoami) "$db_dir"
+
+    # Check if the config files exist and create them if not
+    kiwi_config_log="$base_dir/kiwi_config_log"
+    kiwi_config_file="$base_dir/kiwi_config_file"
+
+    if [ ! -e "$kiwi_config_log" ]; then
+        touch "$kiwi_config_log"
+        chmod 664 "$kiwi_config_log"
+        chown $(whoami):$(whoami) "$kiwi_config_log"
+    fi
+
+    if [ ! -e "$kiwi_config_file" ]; then
+        touch "$kiwi_config_file"
+        chmod 664 "$kiwi_config_file"
+        chown $(whoami):$(whoami) "$kiwi_config_file"
+    fi
 }
+
+
 
 function create_dir_backup() {
     mkdir -p /home/backup
@@ -536,13 +571,16 @@ function open_port() {
     fi
 
     # Open the specified port
-    iptables -A INPUT -p tcp --dport $PORT_NUMBER -j ACCEPT
+    iptables -A INPUT -p tcp --dport "$PORT_NUMBER" -j ACCEPT
 
-    # Save the iptables rules to persist across reboots (this may vary based on your distribution)
-    service iptables save &> /dev/null  # For RHEL/CentOS
-    # or
-    iptables-save > /etc/iptables/rules.v4  # For Debian/Ubuntu
-
+    # Save the iptables rules to persist across reboots
+    if command -v service &> /dev/null; then
+        service iptables save &> /dev/null  # For RHEL/CentOS
+    elif command -v systemctl &> /dev/null; then
+        systemctl restart iptables &> /dev/null  # For systemd-based systems
+    else
+        iptables-save > /etc/iptables/rules.v4  # Default fallback (Debian/Ubuntu)
+    fi
     echo "Port $PORT_NUMBER opened successfully."
 }
 
@@ -668,22 +706,19 @@ clean_up(){
   PrintGreen "Cleaning up is done!"
 }
 
-#install nginx https://gist.github.com/Dryam/3cd2e55a19e1954f1433
 function main(){
     welcome
     check_condition_before_install
     create_swap
     install_base
     remove_apache2
-    check_install_go
-    remove_file "kiwi"
-    clone_repository
-    move_file
+    check_install_go    
+    clone_repository    
     open_port `$KIWIPANEL_PORT`
     create_state
     start_systemd
     setup_kiwipanel
-    # Set up trap to call cleanUp function on script exit (EXIT signal)
+    # Using the keyword `trap` to call the function cleanUp on script exit (EXIT signal)
     trap clean_up EXIT
 }
 
