@@ -68,7 +68,7 @@ func (app *Controller) Hello(c echo.Context) error {
 
 	fmt.Println("Local IP Address:", ip)
 
-	return c.String(http.StatusOK, "Hello, "+username+"ip: "+ip)
+	return c.String(http.StatusOK, "Hello, cập nhật "+username+"ip: "+ip)
 
 	return c.String(http.StatusOK, "hello sesion")
 
