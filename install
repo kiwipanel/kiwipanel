@@ -197,7 +197,7 @@ function move_nested_file() {
 
     # Move the content of the source folder to the destination folder
     mv "$source_folder"/* "$destination_folder"/ || return 1
-    echo "Nested content of '$source_folder' moved to '$destination_folder'."
+    echo "The content of '$source_folder' has been moved to '$destination_folder'."
 }
 function rename_folder() {
     if [ $# -ne 1 ]; then
@@ -260,8 +260,6 @@ function create_dir_bash() {
     chown -R $(whoami):$(whoami) "$db_dir"
 
     # Check if the config files exist and create them if not
-    kiwi_config_log="$base_dir/kiwi_config_log"
-    kiwi_config_file="$base_dir/kiwi_config_file"
 
     if [ ! -e "$kiwi_config_log" ]; then
         touch "$kiwi_config_log"
@@ -451,18 +449,19 @@ function check_architecture(){
 function check_os() {
     echo "Your current Kernel: ${kernel_version}"
     echo "Your current Linux distro: ${distro}"
-    if [[ "$distro" != "Ubuntu" ]]; then
-        PrintRed "The current version of KiwiPanel only works on Ubuntu."
-        exit 1
-    fi
-
-    #Ref: https://www.aapanel.com/new/download.html#install
-    UbuntuCheck=$(cat /etc/issue | grep Ubuntu | awk '{print $2}' | cut -f 1 -d '.')
-    if [ "${UbuntuCheck}" -lt "18" ]; then
-        echo "Ubuntu ${UbuntuCheck} is not supported to the KiwiPanel, use Ubuntu20/22 to install"
+    if [[ "$distro" == "Ubuntu" || "$distro" == "Debian" ]]; then
+        #Ref: https://www.aapanel.com/new/download.html#install
+        UbuntuCheck=$(cat /etc/issue | grep Ubuntu | awk '{print $2}' | cut -f 1 -d '.')
+        if [ "${UbuntuCheck}" -lt "18" ]; then
+            echo "Ubuntu ${UbuntuCheck} is not supported to the KiwiPanel, use Ubuntu20/22 to install"
+            exit 1
+        fi
+    else
+        PrintRed "The current version of KiwiPanel only works on Ubuntu or Debian."
         exit 1
     fi
 }
+
 function check_condition_before_install(){
     PrintGreen "Evaluating your VPS before installing KiwiPanel....."
     sleep 2    
@@ -479,7 +478,9 @@ function check_file_availability() {
   fi
 }
 
-#Create swap
+#Create swap 
+#Recommendation about the amount of swap: 
+#https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/managing_storage_devices/getting-started-with-swap_managing-storage-devices
 function create_swap() {
     # Check if a swap file already exists
     if [ -e /swapfile ]; then
@@ -523,8 +524,9 @@ function BaseUbuntu(){
 }
 
  # Install the base system for the specified distribution.
-function install_base(){      
-    if [ "$distro" == "Ubuntu" ]; then
+function install_base(){   
+    echo "Installing the base tools including wget curl git zip unzip nano..."   
+    if [[ "$distro" == "Ubuntu" || "$distro" == "Debian" ]]; then
         UpdateUbuntu
         BaseUbuntu
     elif [ "$distro" == "AlmaLinux" ] || [ "$distro" == "Centos" ] || [ "$distro" == "RockyLinux" ]; then
@@ -719,7 +721,7 @@ function main(){
     start_systemd
     setup_kiwipanel
     # Using the keyword `trap` to call the function cleanUp on script exit (EXIT signal)
-    trap clean_up EXIT
+    #trap clean_up EXIT
 }
 
 main
