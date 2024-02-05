@@ -3,7 +3,7 @@
 read_kiwipanel_log() {
     local info=${1}
     # File path
-    file_path="/home/state/kiwipanel.conf"    
+    file_path="/home/state/kiwipanel.conf"
     if [ -e "$file_path" ]; then
         result=$(awk -F':' -v key="$info" '$1 == key {print $2}' "$file_path")
         # Check if epoch time is found
@@ -24,7 +24,6 @@ passcode_info=$(read_kiwipanel_log "passcode")
 # Use the captured values as needed
 echo "Install info: $install_info"
 echo "Passcode info: $passcode_info"
-
 
 calc_size() {
     local raw=$1
@@ -51,8 +50,6 @@ calc_size() {
     total_size=$(awk 'BEGIN{printf "%.1f", '$raw' / '$num'}')
     echo "${total_size} ${unit}"
 }
-
-
 
 _exists() {
     local cmd="$1"
@@ -135,12 +132,12 @@ get_system_info() {
 
 get_system_info
 
-IPADDRESS=`curl -s -L -sk --connect-timeout 10 --retry 3 --retry-delay 0 http://cpanel.net/showip.cgi`
+IPADDRESS=$(curl -s -L -sk --connect-timeout 10 --retry 3 --retry-delay 0 http://cpanel.net/showip.cgi)
 echo "IP ${IPADDRESS}"
 
-readonly RAM=`LC_ALL=C free -m | awk '/Mem:/ { print $2 }'`
+readonly RAM=$(LC_ALL=C free -m | awk '/Mem:/ { print $2 }')
 echo "RAM ${RAM}"
-readonly current_swap=`free | awk '/^Swap:/ {print $3}'`
+readonly current_swap=$(free | awk '/^Swap:/ {print $3}')
 echo "current_swap ${current_swap}"
 
 create_swap() {
@@ -161,8 +158,8 @@ create_swap() {
 }
 
 readonly UPDATE_LINK="https://install.kiwipanel.org/update.txt"
-function get_update_version() {    
-    PARAMETER=$1        
+function get_update_version() {
+    PARAMETER=$1
     VERSION=$(curl -s "${UPDATE_LINK}" | grep "${PARAMETER}=" | cut -f2 -d'=')
     # Return the version
     echo "${VERSION}"
@@ -200,30 +197,48 @@ function SetLogFile {
     if [ -f "$LOG_FILE" ]; then
         rm "$LOG_FILE"
     fi
-    
+
     exec 3>&1
-    exec &> $LOG_FILE
+    exec &>$LOG_FILE
 }
 
 SetLogFile
 
-
-function install_nginx(){
+function install_nginx() {
     #By default- running apt-get install nginx will not install the latest (stable/mainline) version of nginx as it is pulled from Ubuntu repository.
     #Reference - instable the latest stable version: http://nginx.org/en/linux_packages.html#Ubuntu
     sudo apt install curl gnupg2 ca-certificates lsb-release ubuntu-keyring
-    sudo curl https://nginx.org/keys/nginx_signing.key | gpg --dearmor \
-        | sudo tee /usr/share/keyrings/nginx-archive-keyring.gpg >/dev/null
+    sudo curl https://nginx.org/keys/nginx_signing.key | gpg --dearmor |
+        sudo tee /usr/share/keyrings/nginx-archive-keyring.gpg >/dev/null
 
     echo "deb [signed-by=/usr/share/keyrings/nginx-archive-keyring.gpg] \
-    http://nginx.org/packages/ubuntu `lsb_release -cs` nginx" \
-        | sudo tee /etc/apt/sources.list.d/nginx.list
+    http://nginx.org/packages/ubuntu $(lsb_release -cs) nginx" |
+        sudo tee /etc/apt/sources.list.d/nginx.list
 
-    echo -e "Package: *\nPin: origin nginx.org\nPin: release o=nginx\nPin-Priority: 900\n" \
-        | sudo tee /etc/apt/preferences.d/99nginx
+    echo -e "Package: *\nPin: origin nginx.org\nPin: release o=nginx\nPin-Priority: 900\n" |
+        sudo tee /etc/apt/preferences.d/99nginx
 
     sudo apt update && apt -y install nginx
     sudo systemctl start nginx
-    sudo systemctl enable nginx    
+    sudo systemctl enable nginx
 }
+
+function check_debian() {
+    readonly distro=$(grep -oP 'PRETTY_NAME="\K[^"]+' /etc/os-release | cut -f1 -d' ')
+    readonly distro_version=$(echo $(lsb_release -c | cut -d':' -f 2))
+    echo "distro_version: $distro_version"
+
+    if [[ "$distro" == "Debian" ]]; then
+        DebianCheck=$(cat /etc/debian_version)
+        
+         if [[ "${DebianCheck}" < "10" ]]; then
+            echo "Warning: Debian ${DebianCheck} is not supported by KiwiPanel, use Debian 11 or 12 to install"
+            exit 1
+        fi
+
+    fi
+}
+
+check_debian
+
 
