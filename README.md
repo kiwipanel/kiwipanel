@@ -2,7 +2,7 @@
 
 ALERT: NOT READY FOR PRODUCTION, STILL IN THE EARLY STAGE OF DEVELOPMENT.
 
-KiwiPanel is a lightweight control panel helping you manage LEMP stack with less headache.
+KiwiPanel is a lightweight control panel designed to help you efficiently manage your LEMP stack with minimal hassle.
 
 ### Install
 

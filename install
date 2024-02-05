@@ -10,17 +10,17 @@
 clear
 date
 LANG=en_US.UTF-8
-locale-gen en_US.UTF-8 
+locale-gen en_US.UTF-8
 export LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8
 
 # Configuration########################################
-readonly INSTALL_VERSION="0.1.1" 
+readonly INSTALL_VERSION="0.1.1"
 readonly KIWIPANEL_VERSION="0.1.1"
 readonly KIWIPANEL_PORT=8443
 readonly UPDATE_LINK="https://install.kiwipanel.org/update.txt"
 
-function get_update_version() {    
-    PARAMETER=$1        
+function get_update_version() {
+    PARAMETER=$1
     VERSION=$(curl -s "${UPDATE_LINK}" | grep "${PARAMETER}=" | cut -f2 -d'=')
     # Return the version
     echo "${VERSION}"
@@ -48,14 +48,15 @@ function PrintRed() {
 }
 
 function PrintWarning() {
-    local YELLOW_BROWN='\033[38;5;179m'  # ANSI color code for yellow-brown
-    local NC='\033[0m'  # Reset to default color
+    local YELLOW_BROWN='\033[38;5;179m' # ANSI color code for yellow-brown
+    local NC='\033[0m'                  # Reset to default color
     local content="${1}"
     printf "${YELLOW_BROWN}Warning: ${content}${NC}\n"
 }
 
 function ShowLogo {
-    local kiwipanel_text=$(cat << "EOF"
+    local kiwipanel_text=$(
+        cat <<"EOF"
     ██╗░░██╗██╗░██╗░░░░░░░██╗██╗██████╗░░█████╗░███╗░░██╗███████╗██╗░░░░░
     ██║░██╔╝██║░██║░░██╗░░██║██║██╔══██╗██╔══██╗████╗░██║██╔════╝██║░░░░░
     █████═╝░██║░╚██╗████╗██╔╝██║██████╔╝███████║██╔██╗██║█████╗░░██║░░░░░
@@ -63,20 +64,20 @@ function ShowLogo {
     ██║░╚██╗██║░░╚██╔╝░╚██╔╝░██║██║░░░░░██║░░██║██║░╚███║███████╗███████╗
     ╚═╝░░╚═╝╚═╝░░░╚═╝░░░╚═╝░░╚═╝╚═╝░░░░░╚═╝░░╚═╝╚═╝░░╚══╝╚══════╝╚══════╝
 EOF
-)   
+    )
     echo ""
     PrintGreen "${kiwipanel_text}"
     echo ""
 }
 
 # Check for sudo/root privileges######################################
-if [[ $(whoami) != "root" ]]; then	
+if [[ $(whoami) != "root" ]]; then
     PrintRed "You should install KiwiPanel as root or using sudo command."
     exit 1
 fi
 
 # Set the Go version you want to install
-GO_VERSION="1.21.6"  # Update this to the desired Go version
+GO_VERSION="1.21.6" # Update this to the desired Go version
 # Set the Go installation directory
 GO_INSTALL_DIR="/usr/local"
 # Detect the system's architecture
@@ -85,7 +86,7 @@ ARCHITECTURE=$(uname -m)
 # Download and install Go
 function install_go() {
     # Check if Go is already installed
-    if type go &> /dev/null; then
+    if type go &>/dev/null; then
         installed_version=$(go version | awk '{print $3}')
         echo "Go is already installed. Version: ${installed_version}"
         return
@@ -93,19 +94,19 @@ function install_go() {
 
     # Download Go binary based on architecture
     case "$ARCHITECTURE" in
-        "x86_64")
-            GO_BINARY="go${GO_VERSION}.linux-amd64.tar.gz"
-            ;;
-        "aarch64")
-            GO_BINARY="go${GO_VERSION}.linux-arm64.tar.gz"
-            ;;
-        "armv7l")
-            GO_BINARY="go${GO_VERSION}.linux-armv6l.tar.gz"
-            ;;
-        *)
-            echo "Unsupported architecture: $ARCHITECTURE"
-            exit 1
-            ;;
+    "x86_64")
+        GO_BINARY="go${GO_VERSION}.linux-amd64.tar.gz"
+        ;;
+    "aarch64")
+        GO_BINARY="go${GO_VERSION}.linux-arm64.tar.gz"
+        ;;
+    "armv7l")
+        GO_BINARY="go${GO_VERSION}.linux-armv6l.tar.gz"
+        ;;
+    *)
+        echo "Unsupported architecture: $ARCHITECTURE"
+        exit 1
+        ;;
     esac
 
     wget "https://go.dev/dl/${GO_BINARY}" -O /tmp/go.tar.gz
@@ -119,13 +120,12 @@ function install_go() {
     echo "Go ${GO_VERSION} has been installed for ${ARCHITECTURE} architecture."
 }
 
-
-function check_install_go(){
+function check_install_go() {
     PrintGreen "Start to install Golang..."
     sleep 3
     # Check if Go is already installed
     #if command -v go &> /dev/null; then
-    if type go &> /dev/null; then
+    if type go &>/dev/null; then
         installed_version=$(go version | awk '{print $3}')
         echo "Go is already installed. Version: ${installed_version}"
     else
@@ -134,7 +134,7 @@ function check_install_go(){
         # Install Go without asking for confirmation
         install_go
         # Check again after installation
-        if command -v go &> /dev/null; then
+        if command -v go &>/dev/null; then
             installed_version=$(go version | awk '{print $3}')
             echo "Go is installed successfully. Version: ${installed_version}"
         else
@@ -150,13 +150,13 @@ kiwi_current_state="/home/state"
 kiwi_current_backup="/home/backup"
 
 function run_and_check() {
-    local command_to_run="$1"    
-    $command_to_run    
+    local command_to_run="$1"
+    $command_to_run
     local exit_code=$?
     if [ $exit_code -eq 0 ]; then
         PrintGreen "Command $command_to_run succeeded"
     else
-        PrintRed "Command $command_to_run failed with exit code $exit_code"        
+        PrintRed "Command $command_to_run failed with exit code $exit_code"
         if [ $exit_code -eq 5 ]; then
             # Exit code 5 typically indicates that the service is not loaded
             PrintWarning "Service is not loaded or does not exist."
@@ -177,7 +177,7 @@ function move_nested_file() {
     fi
     local source_folder="$1"
     local destination_folder="$2"
-    
+
     # Check if the source folder exists
     if [ ! -d "$source_folder" ]; then
         echo "Source folder '$source_folder' not found."
@@ -234,12 +234,12 @@ function rename_folder() {
 
 # function create_dir_bash() {
 #     mkdir -p /home/state
-#     chmod 755 /home/state    
+#     chmod 755 /home/state
 #     mkdir -p /home/state/database
 #     chmod 775 /home/state/database
-#     chown -R $(whoami):$(whoami) /home/state/database    
+#     chown -R $(whoami):$(whoami) /home/state/database
 #     touch "$kiwi_config_log"
-#     touch "$kiwi_config_file"    
+#     touch "$kiwi_config_file"
 # }
 
 function create_dir_bash() {
@@ -274,23 +274,21 @@ function create_dir_bash() {
     fi
 }
 
-
-
 function create_dir_backup() {
     mkdir -p /home/backup
-    chmod 755 /home/backup    
+    chmod 755 /home/backup
 }
 
-function backup(){
+function backup() {
     if [ -d "$kiwi_current_state" ]; then
         echo "The folder /home/state exists, starting backup the current data: $kiwi_current_state"
-        if [ ! -d "$kiwi_current_backup" ]; then        
-            echo "Folder kiwi_current_backup, does not exists, create it!"     
-            create_dir_backup  
+        if [ ! -d "$kiwi_current_backup" ]; then
+            echo "Folder kiwi_current_backup, does not exists, create it!"
+            create_dir_backup
             echo "Starting backup !"
             sleep 3
             move_nested_file $kiwi_current_state $kiwi_current_backup
-        else            
+        else
             echo "Folder /home/state exists, just backup : $kiwi_current_state"
             PrintGreen "Rename the backup folder."
             sleep 3
@@ -319,23 +317,23 @@ kiwipanel_d_start_time=$(date +%s)
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 NC='\033[0m' #NC: Not color: reset color to the default
-IPADDRESS=`curl -s -L -sk --connect-timeout 10 --retry 3 --retry-delay 0 http://cpanel.net/showip.cgi`
+IPADDRESS=$(curl -s -L -sk --connect-timeout 10 --retry 3 --retry-delay 0 http://cpanel.net/showip.cgi)
 readonly DIR=$(pwd)
 readonly HOSTNAME=$(hostname)
 # Check the current distro and the kernel
 readonly distro=$(grep -oP 'PRETTY_NAME="\K[^"]+' /etc/os-release | cut -f1 -d' ')
 readonly kernel_version=$(uname -r)
-readonly distro_version=`echo $(lsb_release -c | cut -d':' -f 2)`
+readonly distro_version=$(echo $(lsb_release -c | cut -d':' -f 2))
 
 #Reference: https://www.cloudron.io/get.html
-readonly MINIMUM_DISK_SIZE_GB="10" 
-readonly MINIMUM_MEMORY="420" #lightsail 423MB      
+readonly MINIMUM_DISK_SIZE_GB="10"
+readonly MINIMUM_MEMORY="420" #lightsail 423MB
 readonly curl="curl --fail --connect-timeout 20 --retry 10 --retry-delay 2 --max-time 2400"
 readonly rootfs_type=$(LC_ALL=C df --output=fstype / | tail -n1)
 readonly physical_memory=$(LC_ALL=C free -m | awk '/Mem:/ { print $2 }')
 readonly disk_size_bytes=$(LC_ALL=C df --output=size / | tail -n1)
-readonly disk_size_gb=$((${disk_size_bytes}/1024/1024))
-readonly current_swap=`free | awk '/^Swap:/ {print $3}'`
+readonly disk_size_gb=$((${disk_size_bytes} / 1024 / 1024))
+readonly current_swap=$(free | awk '/^Swap:/ {print $3}')
 readonly cpu_cores=$(grep -c "processor" /proc/cpuinfo)
 
 # verify the system has minimum requirements met
@@ -363,19 +361,19 @@ function change_directory() {
     cd "$1" || return
 }
 
-function tracking(){                
-    echo "install:$kiwipanel_d_start_time" >> "$kiwi_config_file"    
+function tracking() {
+    echo "install:$kiwipanel_d_start_time" >>"$kiwi_config_file"
     echo "Current epoch time saved to $kiwi_config_file"
 }
 
 ###################################################################################
-function welcome(){    
+function welcome() {
     ShowLogo
     printf "${GREEN}========================================================\n${NC}"
-    echo   "                   KIWIPANEL.ORG Scripts                  "
-    echo   "            Auto Install & Optimize LEMP Stack            "
-    printf "${GREEN}========================================================\n${NC}"        
-    echo ""    
+    echo "                   KIWIPANEL.ORG Scripts                  "
+    echo "            Auto Install & Optimize LEMP Stack            "
+    printf "${GREEN}========================================================\n${NC}"
+    echo ""
     PrintGreen "Installing KiwiPanel..."
     sleep 3
 }
@@ -399,51 +397,51 @@ LARVPS="/etc/larvps/.info.conf"
 TINO="/opt/tinopanel"
 WEBINOLY="/opt/webinoly/webinoly.conf"
 
-function check_panel_script(){
-  PrintGreen "Checking the current script or panel, if any...."
-  sleep 3;  
-    if [ -f /var/cpanel/cpanel.config ]; then    
-    PrintRed "Your server installed WHM/Cpanel, please reinstall to use KiwiPanel"
-    exit
+function check_panel_script() {
+    PrintGreen "Checking the current script or panel, if any...."
+    sleep 3
+    if [ -f /var/cpanel/cpanel.config ]; then
+        PrintRed "Your server installed WHM/Cpanel, please reinstall to use KiwiPanel"
+        exit
     fi
 
-    if [ -f /etc/psa/.psa.shadow ]; then    
-    echo "Your server installed Plesk, please reinstall to use KiwiPanel."
-    exit
+    if [ -f /etc/psa/.psa.shadow ]; then
+        echo "Your server installed Plesk, please reinstall to use KiwiPanel."
+        exit
     fi
 
-    if [ -f /etc/init.d/directadmin ]; then    
-    echo "Your server installed DirectAdmin, please reinstall to use KiwiPanel."
-    exit
+    if [ -f /etc/init.d/directadmin ]; then
+        echo "Your server installed DirectAdmin, please reinstall to use KiwiPanel."
+        exit
     fi
 
-    if [ -f /etc/init.d/webmin ]; then    
-    echo "Your server installed Webmin, please reinstall to use KiwiPanel."
-    exit
+    if [ -f /etc/init.d/webmin ]; then
+        echo "Your server installed Webmin, please reinstall to use KiwiPanel."
+        exit
     fi
 
-    if [ -f "$WEBINOLY" ]; then    
-    PrintRed "Your server installed WEBINOLY, please reinstall to use KiwiPanel"
-    exit
+    if [ -f "$WEBINOLY" ]; then
+        PrintRed "Your server installed WEBINOLY, please reinstall to use KiwiPanel"
+        exit
     fi
 
-    if [ -f "$TINO" ]; then    
-    PrintRed "Your server installed TINO, please reinstall to use KiwiPanel"
-    exit
+    if [ -f "$TINO" ]; then
+        PrintRed "Your server installed TINO, please reinstall to use KiwiPanel"
+        exit
     fi
-    
+
     PrintGreen "That is good! The VPS is freshly installed. You are good to go..."
     sleep 2
 }
-function check_architecture(){
+function check_architecture() {
     #Check the ARCHITECTURE
     #Ref: https://raw.githubusercontent.com/runtipi/runtipi/master/scripts/install.sh
-    # Not supported on 32 bits systems. 
+    # Not supported on 32 bits systems.
     # Note: aarch64 [ARM 64-bit (also known as AArch64), armv7: 32-bit ARM]
     local ARCHITECTURE="$(uname -m)"
     if [[ "$ARCHITECTURE" == "armv7"* ]] || [[ "$ARCHITECTURE" == "i686" ]] || [[ "$ARCHITECTURE" == "i386" ]]; then
-    PrintRed "KiwiPanel currently does not support the 32 bits systems"
-    exit 1
+        PrintRed "KiwiPanel currently does not support the 32 bits systems"
+        exit 1
     fi
 }
 function check_os() {
@@ -451,16 +449,20 @@ function check_os() {
     echo "Your current Linux distro: ${distro}"
     if [[ "$distro" == "Ubuntu" || "$distro" == "Debian" ]]; then
         #Ref: https://www.aapanel.com/new/download.html#install
+
         if [[ "$distro" == "Debian" ]]; then
-            DebianCheck=`cat /etc/debian_version`
-             if [ "${DebianCheck}" -lt "10" ]; then
-                echo "Debian ${DebianCheck} is not supported by KiwiPanel, use Debian 11 or 12 to install"
+            DebianCheck=$(cat /etc/debian_version)
+            # Comparing string
+            if [[ "${DebianCheck}" < "10" ]]; then
+                echo "Warning: Debian ${DebianCheck} is not supported by KiwiPanel, use Debian 11 or 12 to install"
                 exit 1
             fi
+
         fi
+
         if [[ "$distro" == "Ubuntu" ]]; then
-            UbuntuCheck=$(cat /etc/issue | grep Ubuntu | awk '{print $2}' | cut -f 1 -d '.')            
-             if [ "${UbuntuCheck}" -lt "18" ]; then
+            UbuntuCheck=$(cat /etc/issue | grep Ubuntu | awk '{print $2}' | cut -f 1 -d '.')
+            if [ "${UbuntuCheck}" -lt "18" ]; then
                 echo "Ubuntu ${UbuntuCheck} is not supported by KiwiPanel, use Ubuntu20/22 to install"
                 exit 1
             fi
@@ -471,24 +473,24 @@ function check_os() {
     fi
 }
 
-function check_condition_before_install(){
+function check_condition_before_install() {
     PrintGreen "Evaluating your VPS before installing KiwiPanel....."
-    sleep 2    
+    sleep 2
     check_os
     check_architecture
     check_panel_script
 }
 
 function check_file_availability() {
-  if [ -e "$1" ]; then
-    return 0  # File exists, return true (0)
-  else
-    return 1  # File does not exist, return false (non-zero)
-  fi
+    if [ -e "$1" ]; then
+        return 0 # File exists, return true (0)
+    else
+        return 1 # File does not exist, return false (non-zero)
+    fi
 }
 
-#Create swap 
-#Recommendation about the amount of swap: 
+#Create swap
+#Recommendation about the amount of swap:
 #https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/managing_storage_devices/getting-started-with-swap_managing-storage-devices
 function create_swap() {
     # Check if a swap file already exists
@@ -513,28 +515,28 @@ function create_swap() {
     echo "/swapfile none swap sw 0 0" | sudo tee -a /etc/fstab
 }
 
-function UpdateUbuntu(){
+function UpdateUbuntu() {
     printf " \n"
-    echo "$(tput setaf 2)Updating the system....$(tput sgr0)"     
-    sleep 3;
+    echo "$(tput setaf 2)Updating the system....$(tput sgr0)"
+    sleep 3
     sudo apt-get update && sudo apt-get -y upgrade
 }
-function BaseCentos(){   
+function BaseCentos() {
     printf " \n"
-    echo "$(tput setaf 2)Installing the base tools....$(tput sgr0)" 
-    sleep 3;         
+    echo "$(tput setaf 2)Installing the base tools....$(tput sgr0)"
+    sleep 3
     sudo yum install wget curl git zip unzip nano -y
 }
-function BaseUbuntu(){    
+function BaseUbuntu() {
     printf " \n"
-    echo "$(tput setaf 2)Installing the base tools....$(tput sgr0)" 
-    sleep 3;    
+    echo "$(tput setaf 2)Installing the base tools....$(tput sgr0)"
+    sleep 3
     sudo apt install wget curl git zip unzip nano -y
 }
 
- # Install the base system for the specified distribution.
-function install_base(){   
-    echo "Installing the base tools including wget curl git zip unzip nano..."   
+# Install the base system for the specified distribution.
+function install_base() {
+    echo "Installing the base tools including wget curl git zip unzip nano..."
     if [[ "$distro" == "Ubuntu" || "$distro" == "Debian" ]]; then
         UpdateUbuntu
         BaseUbuntu
@@ -544,8 +546,8 @@ function install_base(){
 }
 
 #Just in case it is needed
-function remove_apache2(){
-    #The || true at the end ensures that the entire command sequence returns a successful exit status (0), 
+function remove_apache2() {
+    #The || true at the end ensures that the entire command sequence returns a successful exit status (0),
     # even if the systemctl command returns a non-zero exit status.
     sudo systemctl --quiet disable --now apache2 || true
     sudo service apache2 stop
@@ -559,7 +561,7 @@ function remove_apache2(){
     sudo rm -r /usr/share/man/man8/apache2.8.gz
 }
 
-function clone_repository(){  
+function clone_repository() {
     PrintGreen "Cloning the code from github.com/kiwipanel"
     cd /home
     sudo git clone https://github.com/kiwipanel/scaffolding.git
@@ -570,7 +572,7 @@ function clone_repository(){
 function open_port() {
     local PORT_NUMBER="$1"
     # Check if iptables is installed
-    if ! command -v iptables &> /dev/null; then
+    if ! command -v iptables &>/dev/null; then
         echo "Error: iptables not found. This function requires iptables."
         return 1
     fi
@@ -585,12 +587,12 @@ function open_port() {
     iptables -A INPUT -p tcp --dport "$PORT_NUMBER" -j ACCEPT
 
     # Save the iptables rules to persist across reboots
-    if command -v service &> /dev/null; then
-        service iptables save &> /dev/null  # For RHEL/CentOS
-    elif command -v systemctl &> /dev/null; then
-        systemctl restart iptables &> /dev/null  # For systemd-based systems
+    if command -v service &>/dev/null; then
+        service iptables save &>/dev/null # For RHEL/CentOS
+    elif command -v systemctl &>/dev/null; then
+        systemctl restart iptables &>/dev/null # For systemd-based systems
     else
-        iptables-save > /etc/iptables/rules.v4  # Default fallback (Debian/Ubuntu)
+        iptables-save >/etc/iptables/rules.v4 # Default fallback (Debian/Ubuntu)
     fi
     echo "Port $PORT_NUMBER opened successfully."
 }
@@ -604,16 +606,16 @@ function remove_file() {
 function move_file() {
     # usr: unix system resources
     sudo mv -v kiwi /usr/bin
-    sudo chmod 755 /usr/bin/kiwi    
+    sudo chmod 755 /usr/bin/kiwi
 
 }
-function create_passcode(){  
-  # Append the random string to the file  
-  echo "passcode:$kiwipanel_passcode" >> "$kiwi_config_file"     
-  PrintGreen "Passcode $kiwipanel_passcode is generated and save to kiwipanel.conf"
+function create_passcode() {
+    # Append the random string to the file
+    echo "passcode:$kiwipanel_passcode" >>"$kiwi_config_file"
+    PrintGreen "Passcode $kiwipanel_passcode is generated and save to kiwipanel.conf"
 }
 function create_database() {
-    folder_path="/home/state/database"    
+    folder_path="/home/state/database"
     file_path="$folder_path/kiwipanel.sqlite"
 
     # Create the folder if it doesn't exist
@@ -622,7 +624,7 @@ function create_database() {
         chmod 775 "$folder_path"
         chown -R $(whoami):$(whoami) "$folder_path"
         echo "Folder created: $folder_path"
-    else                
+    else
         # Remove the source folder
         rm -r "$folder_path" || return 1
         # Create a new one
@@ -635,20 +637,21 @@ function create_database() {
     # Create the file if it doesn't exist
     if [ ! -e "$file_path" ]; then
         touch "$file_path"
-        chmod 664 "$file_path"  # Adjust permissions to allow all users to read and write
+        chmod 664 "$file_path" # Adjust permissions to allow all users to read and write
         chown $(whoami):$(whoami) "$file_path"
         echo "File created: $file_path"
     else
         echo "File already exists: $file_path"
-        chmod 664 "$file_path"  # Adjust permissions in case the file already exists
+        chmod 664 "$file_path" # Adjust permissions in case the file already exists
         chown $(whoami):$(whoami) "$file_path"
     fi
 }
-function create_state(){
-  create_passcode
-  create_database
+function create_state() {
+    create_passcode
+    create_database
 }
-readonly kiwipanel_service=$(cat <<EOF
+readonly kiwipanel_service=$(
+    cat <<EOF
 [Unit]
 Description=Kiwipanel application
 [Service]
@@ -661,43 +664,43 @@ ExecStart=/home/scaffolding/bin/kiwipanel start
 WantedBy=multi-user.target
 EOF
 )
-function create_systemd(){
+function create_systemd() {
     PrintGreen "Creating systemd-based service for running kiwipanel..."
     sleep 3
-    local file_path="/etc/systemd/system/kiwipanel.service"    
-    echo "$kiwipanel_service" > "$file_path"    #write file
+    local file_path="/etc/systemd/system/kiwipanel.service"
+    echo "$kiwipanel_service" >"$file_path" #write file
     echo "File $file_path created successfully."
 }
-function start_systemd(){
+function start_systemd() {
     create_systemd
     #sudo systemctl daemon-reload
     run_and_check "sudo systemctl daemon-reload"
     #sudo systemctl start kiwipanel
-    run_and_check "sudo systemctl start kiwipanel"    
+    run_and_check "sudo systemctl start kiwipanel"
     #Will restart automatically when VPS restarts
-    #sudo systemctl enable kiwipanel 
+    #sudo systemctl enable kiwipanel
     run_and_check "sudo systemctl enable kiwipanel"
 }
 
-function setup_kiwipanel(){  
-# Check if there is any other non-root process running on the port KIWIPANEL_PORT
-  local KIWIPANEL_RUNNING=$(lsof -u^root -i:"$KIWIPANEL_PORT" -P -n -sTCP:LISTEN)
-  echo "KIWIPANEL_RUNNING: $KIWIPANEL_RUNNING"
-  if [ ! -z "${KIWIPANEL_RUNNING}" ]; then
-    PrintRed "Cannot install KiwiPanel. Some other process is running on port $KIWIPANEL_PORT which does not belong to root!."
-    exit 1
-  fi
-  successMessage
+function setup_kiwipanel() {
+    # Check if there is any other non-root process running on the port KIWIPANEL_PORT
+    local KIWIPANEL_RUNNING=$(lsof -u^root -i:"$KIWIPANEL_PORT" -P -n -sTCP:LISTEN)
+    echo "KIWIPANEL_RUNNING: $KIWIPANEL_RUNNING"
+    if [ ! -z "${KIWIPANEL_RUNNING}" ]; then
+        PrintRed "Cannot install KiwiPanel. Some other process is running on port $KIWIPANEL_PORT which does not belong to root!."
+        exit 1
+    fi
+    successMessage
 }
 
-function successMessage(){    
+function successMessage() {
     tracking
-    printf " \n"    
+    printf " \n"
     PrintGreen "Kiwiscript has been successfully installed on your VPS!"
-    kiwipanel_d_end_time=$(date +%s)    
-    elapsed=$((kiwipanel_d_end_time - kiwipanel_d_start_time))     
-    echo "$(tput setaf 2)Total time installed: ${elapsed} seconds.$(tput sgr0)"      
-    printf " \n"     
+    kiwipanel_d_end_time=$(date +%s)
+    elapsed=$((kiwipanel_d_end_time - kiwipanel_d_start_time))
+    echo "$(tput setaf 2)Total time installed: ${elapsed} seconds.$(tput sgr0)"
+    printf " \n"
     echo "    
     "$(tput setaf 2)================================Install KiwiPanel Done!==============================$(tput sgr0)"        
     
@@ -707,25 +710,25 @@ function successMessage(){
     "
 }
 
-clean_up(){  
-   #Clean the history of the commands that have been used during the current shell session.
-  history -c 
-   # Clean the local repository of retrieved package files
-  apt clean
-  #Remove the script itself
-  rm $0
-  PrintGreen "Cleaning up is done!"
+clean_up() {
+    #Clean the history of the commands that have been used during the current shell session.
+    history -c
+    # Clean the local repository of retrieved package files
+    apt clean
+    #Remove the script itself
+    rm $0
+    PrintGreen "Cleaning up is done!"
 }
 
-function main(){
+function main() {
     welcome
     check_condition_before_install
     create_swap
     install_base
     remove_apache2
-    check_install_go    
-    clone_repository    
-    open_port `$KIWIPANEL_PORT`
+    check_install_go
+    clone_repository
+    open_port $($KIWIPANEL_PORT)
     create_state
     start_systemd
     setup_kiwipanel
