@@ -292,10 +292,10 @@ function backup(){
             move_nested_file $kiwi_current_state $kiwi_current_backup
         else            
             echo "Folder /home/state exists, just backup : $kiwi_current_state"
-            PrintGreen "Step 1: Rename the backup folder"
+            PrintGreen "Rename the backup folder."
             sleep 3
             rename_folder $kiwi_current_backup
-            PrintGreen "Step 2: Create a new empty backup folder"
+            PrintGreen "Create a new empty backup folder."
             sleep 3
             move_nested_file $kiwi_current_state $kiwi_current_backup
         fi
@@ -451,10 +451,19 @@ function check_os() {
     echo "Your current Linux distro: ${distro}"
     if [[ "$distro" == "Ubuntu" || "$distro" == "Debian" ]]; then
         #Ref: https://www.aapanel.com/new/download.html#install
-        UbuntuCheck=$(cat /etc/issue | grep Ubuntu | awk '{print $2}' | cut -f 1 -d '.')
-        if [ "${UbuntuCheck}" -lt "18" ]; then
-            echo "Ubuntu ${UbuntuCheck} is not supported to the KiwiPanel, use Ubuntu20/22 to install"
-            exit 1
+        if [[ "$distro" == "Debian" ]]; then
+            DebianCheck=`cat /etc/debian_version`
+             if [ "${DebianCheck}" -lt "10" ]; then
+                echo "Debian ${DebianCheck} is not supported by KiwiPanel, use Debian 11 or 12 to install"
+                exit 1
+            fi
+        fi
+        if [[ "$distro" == "Ubuntu" ]]; then
+            UbuntuCheck=$(cat /etc/issue | grep Ubuntu | awk '{print $2}' | cut -f 1 -d '.')            
+             if [ "${UbuntuCheck}" -lt "18" ]; then
+                echo "Ubuntu ${UbuntuCheck} is not supported by KiwiPanel, use Ubuntu20/22 to install"
+                exit 1
+            fi
         fi
     else
         PrintRed "The current version of KiwiPanel only works on Ubuntu or Debian."
