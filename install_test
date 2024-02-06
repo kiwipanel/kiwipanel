@@ -206,7 +206,7 @@ SetLogFile
 
 function install_nginx() {
     #By default- running apt-get install nginx will not install the latest (stable/mainline) version of nginx as it is pulled from Ubuntu repository.
-    #Reference - instable the latest stable version: http://nginx.org/en/linux_packages.html#Ubuntu
+    #Reference - install the latest stable version: http://nginx.org/en/linux_packages.html#Ubuntu
     sudo apt install curl gnupg2 ca-certificates lsb-release ubuntu-keyring
     sudo curl https://nginx.org/keys/nginx_signing.key | gpg --dearmor |
         sudo tee /usr/share/keyrings/nginx-archive-keyring.gpg >/dev/null

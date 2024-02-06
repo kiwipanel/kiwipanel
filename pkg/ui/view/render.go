@@ -6,26 +6,8 @@ import (
 	"io"
 	"os"
 
-	"github.com/kiwipanel/scaffolding/config"
 	"github.com/labstack/echo/v4"
 )
-
-var app config.AppConfig
-
-type mode struct {
-	condition string
-}
-
-var test string
-
-func LoadConfig(appConfig config.AppConfig) {
-	app = appConfig
-}
-
-func Loadmode(getmode string) {
-	fmt.Println("run load mode in render.go, getmode: ", getmode)
-	test = getmode
-}
 
 type Template struct {
 	templates *template.Template
