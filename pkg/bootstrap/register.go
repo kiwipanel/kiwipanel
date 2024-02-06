@@ -21,7 +21,6 @@ func Register(mode string) {
 	app.KIWIPANEL_MODE = mode
 	fmt.Println("env loaded in Register.com: ", env)
 
-	view.Loadmode("hello")
 	static.Register(r)
 	r.Renderer = view.RenderTemplates
 	routing.Register(&app)

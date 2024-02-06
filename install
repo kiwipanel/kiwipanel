@@ -327,7 +327,7 @@ readonly distro_version=$(echo $(lsb_release -c | cut -d':' -f 2))
 
 #Reference: https://www.cloudron.io/get.html
 readonly MINIMUM_DISK_SIZE_GB="10"
-readonly MINIMUM_MEMORY="420" #lightsail 423MB
+readonly MINIMUM_MEMORY="420" #on Amazon lightsail 423MB, 
 readonly curl="curl --fail --connect-timeout 20 --retry 10 --retry-delay 2 --max-time 2400"
 readonly rootfs_type=$(LC_ALL=C df --output=fstype / | tail -n1)
 readonly physical_memory=$(LC_ALL=C free -m | awk '/Mem:/ { print $2 }')
@@ -343,7 +343,7 @@ if [[ "${rootfs_type}" != "ext4" && "${rootfs_type}" != "xfs" ]]; then
 fi
 
 if [[ "${physical_memory}" -lt "${MINIMUM_MEMORY}" ]]; then
-    echo "Error: KiwiPanel requires atleast 512MB physical memory"
+    echo "Error: KiwiPanel requires at least 512MB physical memory"
     exit 1
 fi
 
@@ -355,8 +355,8 @@ fi
 function generate_random_string() {
     cat /dev/urandom | tr -dc 'a-z0-9' | head -c 9
 }
-
 readonly kiwipanel_passcode=$(generate_random_string)
+
 function change_directory() {
     cd "$1" || return
 }
@@ -381,7 +381,7 @@ function welcome() {
 # Control Panel path
 # @credit: https://github.com/sanvu88/lempstack/blob/master/install
 CPANEL="/usr/local/cpanel/cpanel"
-DIRECTADMIN="/usr/local/directadmin/custombuild/build"
+DIRECTADMIN="/etc/init.d/directadmin"
 PLESK="/usr/local/psa/version"
 WEBMIN="/etc/init.d/webmin"
 SENTORA="/root/passwords.txt"
@@ -396,38 +396,98 @@ EEV4="/opt/easyengine"
 LARVPS="/etc/larvps/.info.conf"
 TINO="/opt/tinopanel"
 WEBINOLY="/opt/webinoly/webinoly.conf"
+CYBERPANEL="/usr/local/lscp"
+WPTANGTOC="/etc/wptt/.wptt.conf"
+HOSTVN="var/hostvn/hostvn.conf"
+#KIWIPANEL="/home/state/kiwipanel.conf"
 
 function check_panel_script() {
     PrintGreen "Checking the current script or panel, if any...."
     sleep 3
-    if [ -f /var/cpanel/cpanel.config ]; then
+
+    if [ -f /var/cpanel/cpanel.config || -f "$CPANEL"]; then
         PrintRed "Your server installed WHM/Cpanel, please reinstall to use KiwiPanel"
         exit
     fi
 
-    if [ -f /etc/psa/.psa.shadow ]; then
+    if [ -f "$PLESK"]; then
         echo "Your server installed Plesk, please reinstall to use KiwiPanel."
         exit
     fi
 
-    if [ -f /etc/init.d/directadmin ]; then
+    if [ -f "$KUSANAGI"]; then
+        echo "Your server installed KUSANAGI, please reinstall to use KiwiPanel."
+        exit
+    fi
+
+    if [ -f "$DIRECTADMIN"]; then
         echo "Your server installed DirectAdmin, please reinstall to use KiwiPanel."
         exit
     fi
 
-    if [ -f /etc/init.d/webmin ]; then
+    if [ -f "$WEBMIN" ]; then
         echo "Your server installed Webmin, please reinstall to use KiwiPanel."
         exit
     fi
 
     if [ -f "$WEBINOLY" ]; then
-        PrintRed "Your server installed WEBINOLY, please reinstall to use KiwiPanel"
+        PrintRed "Your server installed WEBINOLY, please reinstall to use KiwiPanel!"
         exit
     fi
 
     if [ -f "$TINO" ]; then
-        PrintRed "Your server installed TINO, please reinstall to use KiwiPanel"
+        PrintRed "Your server installed TINO, please reinstall to use KiwiPanel!"
         exit
+    fi
+
+    if [ -f "$VPSSIM" ]; then
+        PrintRed "Your server installed VPSSIM, please reinstall to use KiwiPanel!"
+        exit
+    fi
+
+    if [ -f "$EEV4" ]; then
+        PrintRed "Your server installed EEV4, please reinstall to use KiwiPanel!"
+        exit
+    fi
+
+    if [ -f "$HOCVPS" ]; then
+        PrintRed "Your server installed HOCVPS, please reinstall to use KiwiPanel!"
+        exit
+    fi
+
+    if [ -f "$VESTA" ]; then
+        PrintRed "Your server installed VESTA, please reinstall to use KiwiPanel!"
+        exit
+    fi
+
+    if [ -f "$SENTORA" ]; then
+        PrintRed "Your server installed SENTORA, please reinstall to use KiwiPanel!"
+        exit
+    fi
+
+    if [ -f "$WORDOPS" ]; then
+        PrintRed "Your server installed WORDOPS, please reinstall to use KiwiPanel!"
+        exit
+    fi
+
+    if [[ -d "$CYBERPANEL" ]];then
+        PrintRed "Your server installed Cyberpanel, please reinstall to use KiwiPanel!" 
+        exit
+    fi
+
+    if [ -f "$WPTANGTOC" ]; then
+        PrintRed "Your server installed WPTangToc OLS, please reinstall to use KiwiPanel!"        
+        exit
+    fi
+
+     if [ -f "$HOSTVN" ]; then
+        PrintRed "Your server installed HOSTVN script, please reinstall to use KiwiPanel!"        
+        exit
+    fi
+
+    if [[ -d /usr/local/lsws || -d /home/lsws ]]; then
+        PrintRed "Your server installed LiteSpeed Webserver, please reinstall your OS to use KiwiPanel! By default, KiwiPanel runs Nginx. Apache, LiteSpeed and Caddy will be supported in the future";                
+	    exit
     fi
 
     PrintGreen "That is good! The VPS is freshly installed. You are good to go..."
