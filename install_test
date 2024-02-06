@@ -242,3 +242,23 @@ function check_debian() {
 check_debian
 
 
+#!/bin/bash
+
+# Function to check if a port is in use
+check_port_usage() {
+    local port_number=$1    
+    # Check if lsof is installed [Will be surely installed]
+    if ! [ -x "$(command -v lsof)" ]; then
+        echo 'Error: lsof is not installed. Please install lsof to use this script.' >&2
+        return 1
+    fi
+    # Check if the port is in use
+    if lsof -i :$port_number >/dev/null 2>&1; then
+        echo "Port $port_number is in use. You might check your compute as KiwiPanel will run on the port 8443."
+    else
+        echo "Port $port_number is not in use."
+    fi
+}
+
+# Usage example: check_port_usage 1234
+check_port_usage 8443

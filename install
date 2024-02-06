@@ -199,6 +199,7 @@ function move_nested_file() {
     mv "$source_folder"/* "$destination_folder"/ || return 1
     echo "The content of '$source_folder' has been moved to '$destination_folder'."
 }
+
 function rename_folder() {
     if [ $# -ne 1 ]; then
         echo "Usage: rename_folder <old_folder_name>"
@@ -327,7 +328,7 @@ readonly distro_version=$(echo $(lsb_release -c | cut -d':' -f 2))
 
 #Reference: https://www.cloudron.io/get.html
 readonly MINIMUM_DISK_SIZE_GB="10"
-readonly MINIMUM_MEMORY="420" #on Amazon lightsail 423MB, 
+readonly MINIMUM_MEMORY="420" #on Amazon lightsail 423MB,
 readonly curl="curl --fail --connect-timeout 20 --retry 10 --retry-delay 2 --max-time 2400"
 readonly rootfs_type=$(LC_ALL=C df --output=fstype / | tail -n1)
 readonly physical_memory=$(LC_ALL=C free -m | awk '/Mem:/ { print $2 }')
@@ -402,25 +403,25 @@ HOSTVN="var/hostvn/hostvn.conf"
 #KIWIPANEL="/home/state/kiwipanel.conf"
 
 function check_panel_script() {
-    PrintGreen "Checking the current script or panel, if any...."
+    PrintGreen "Checking the existing script or panel... You should install KiwiPanel on a fresh compute!"
     sleep 3
 
-    if [ -f /var/cpanel/cpanel.config || -f "$CPANEL"]; then
+    if [ -f /var/cpanel/cpanel.config ] || [ -f "$CPANEL" ]; then
         PrintRed "Your server installed WHM/Cpanel, please reinstall to use KiwiPanel"
         exit
     fi
 
-    if [ -f "$PLESK"]; then
+    if [ -f "$PLESK" ]; then
         echo "Your server installed Plesk, please reinstall to use KiwiPanel."
         exit
     fi
 
-    if [ -f "$KUSANAGI"]; then
+    if [ -f "$KUSANAGI" ]; then
         echo "Your server installed KUSANAGI, please reinstall to use KiwiPanel."
         exit
     fi
 
-    if [ -f "$DIRECTADMIN"]; then
+    if [ -f "$DIRECTADMIN" ]; then
         echo "Your server installed DirectAdmin, please reinstall to use KiwiPanel."
         exit
     fi
@@ -470,30 +471,32 @@ function check_panel_script() {
         exit
     fi
 
-    if [[ -d "$CYBERPANEL" ]];then
-        PrintRed "Your server installed Cyberpanel, please reinstall to use KiwiPanel!" 
+    if [[ -d "$CYBERPANEL" ]]; then
+        PrintRed "Your server installed Cyberpanel, please reinstall to use KiwiPanel!"
         exit
     fi
 
     if [ -f "$WPTANGTOC" ]; then
-        PrintRed "Your server installed WPTangToc OLS, please reinstall to use KiwiPanel!"        
+        PrintRed "Your server installed WPTangToc OLS, please reinstall to use KiwiPanel!"
         exit
     fi
 
-     if [ -f "$HOSTVN" ]; then
-        PrintRed "Your server installed HOSTVN script, please reinstall to use KiwiPanel!"        
+    if [ -f "$HOSTVN" ]; then
+        PrintRed "Your server installed HOSTVN script, please reinstall to use KiwiPanel!"
         exit
     fi
 
     if [[ -d /usr/local/lsws || -d /home/lsws ]]; then
-        PrintRed "Your server installed LiteSpeed Webserver, please reinstall your OS to use KiwiPanel! By default, KiwiPanel runs Nginx. Apache, LiteSpeed and Caddy will be supported in the future";                
-	    exit
+        PrintRed "Your server installed LiteSpeed Webserver, please reinstall your OS to use KiwiPanel! By default, KiwiPanel runs Nginx. Apache, LiteSpeed and Caddy will be supported in the future"
+        exit
     fi
 
     PrintGreen "That is good! The VPS is freshly installed. You are good to go..."
     sleep 2
 }
 function check_architecture() {
+    PrintGreen "Checking ARCHITECTURE... Kiwipanel supports 64 bits system only!"
+    sleep 2
     #Check the ARCHITECTURE
     #Ref: https://raw.githubusercontent.com/runtipi/runtipi/master/scripts/install.sh
     # Not supported on 32 bits systems.
@@ -505,6 +508,8 @@ function check_architecture() {
     fi
 }
 function check_os() {
+    PrintGreen "Checking the OS... Kiwipanel currently supports Ubuntu and Debian only!More to come, surely"
+    sleep 2
     echo "Your current Kernel: ${kernel_version}"
     echo "Your current Linux distro: ${distro}"
     if [[ "$distro" == "Ubuntu" || "$distro" == "Debian" ]]; then
@@ -533,12 +538,31 @@ function check_os() {
     fi
 }
 
+function check_port_usage() {
+    PrintGreen "Checking the port 8443..."
+    sleep 2
+    local port_number=$1
+    # Check if lsof is installed [Will be surely installed]
+    if ! [ -x "$(command -v lsof)" ]; then
+        echo 'Error: lsof is not installed. Please install lsof to use this script.' >&2
+        return 1
+    fi
+    # Check if the port is in use
+    if lsof -i :$port_number >/dev/null 2>&1; then
+        echo "Port $port_number is in use. You might check your compute as KiwiPanel will run on the port 8443."
+        exit 1
+    else
+        echo "Port $port_number is not in use. You are good to go!"
+    fi
+}
+
 function check_condition_before_install() {
-    PrintGreen "Evaluating your VPS before installing KiwiPanel....."
+    PrintGreen "✔️ Evaluating your VPS before installing KiwiPanel....."
     sleep 2
     check_os
     check_architecture
     check_panel_script
+    check_port_usage 8443
 }
 
 function check_file_availability() {
@@ -585,13 +609,13 @@ function BaseCentos() {
     printf " \n"
     echo "$(tput setaf 2)Installing the base tools....$(tput sgr0)"
     sleep 3
-    sudo yum install wget curl git zip unzip nano -y
+    sudo yum install wget curl git zip unzip nano lsof -y
 }
 function BaseUbuntu() {
     printf " \n"
     echo "$(tput setaf 2)Installing the base tools....$(tput sgr0)"
     sleep 3
-    sudo apt install wget curl git zip unzip nano -y
+    sudo apt install wget curl git zip unzip nano lsof -y
 }
 
 # Install the base system for the specified distribution.
