@@ -11,6 +11,7 @@ KiwiPanel is a lightweight control panel designed to help you efficiently manage
 - Cloudcone:        tested - automatically opens the port 8443.
 - Hetzner:          tested - automatically opens the port 8443.
 - Linode:           tested - automatically opens the port 8443.
+- Crunchbits:       tested - automatically opens the port 8443.
 
 
 ### References
@@ -40,6 +41,7 @@ KiwiPanel is a lightweight control panel designed to help you efficiently manage
 - https://github.com/ajaxorg/ace
 - https://codemirror.net/5/doc/manual.html
 - https://echarts.apache.org/
+- https://github.com/google/ngx_brotli
 
 
 

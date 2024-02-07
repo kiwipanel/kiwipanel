@@ -262,3 +262,43 @@ check_port_usage() {
 
 # Usage example: check_port_usage 1234
 check_port_usage 8443
+
+
+#!/bin/bash
+
+KIWIPANEL="/home/state/kiwipanel.conf"
+
+if [ -f "$KIWIPANEL" ]; then
+    echo "Your server has the KIWIPANEL script installed. Please log into it using your personal confidential account."
+fi
+
+# Ask for instructions regardless of whether the kiwipanel.conf file is found
+echo "What would you like to do?"
+echo "1. Start KIWIPANEL"
+echo "2. Stop KIWIPANEL"
+echo "3. Check KIWIPANEL status"
+echo "4. Exit"
+
+read -rp "Enter your choice (1-4): " choice
+case "$choice" in
+    1)
+        echo "Starting KIWIPANEL..."
+        # Add your commands to start KIWIPANEL here
+        ;;
+    2)
+        echo "Stopping KIWIPANEL..."
+        # Add your commands to stop KIWIPANEL here
+        ;;
+    3)
+        echo "Checking KIWIPANEL status..."
+        # Add your commands to check KIWIPANEL status here
+        ;;
+    4)
+        echo "Exiting..."
+        exit 0
+        ;;
+    *)
+        echo "Invalid choice. Exiting..."
+        exit 1
+        ;;
+esac

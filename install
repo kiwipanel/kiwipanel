@@ -1,19 +1,26 @@
 #!/bin/bash
-#######################################################
+######################################################################
+#           KiwiPanel - a LEMP Stack on Ubuntu||Debian               #
+#                                                                    #
+#                Author: Vuong Nguyen and contributors               #
+#                  Website: https://kiwipanel.org                    #
+#                  @since: 2024                                      #
+#              Please do not remove copyright. Thanks!               #
+#  Please do not copy under any circumstance for commercial reason!  #
+######################################################################
+
+######################################################################
 # KiwiPanel Installer v0.0.1
-# To install KiwiPanel type:
+# To install KiwiPanel type, copy the following instruction and paste to the terminal
 # curl -sLO # curl -sLO https://install.kiwipanel.org/install && chmod +x install && sudo bash install
-# @author: Vuong Nguyen and contributors
-# @website: https://kiwipanel.org
-# @since: 2024
-#######################################################
+######################################################################
 clear
 date
 LANG=en_US.UTF-8
 locale-gen en_US.UTF-8
 export LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8
 
-# Configuration########################################
+# Configuration########################################################
 readonly INSTALL_VERSION="0.1.1"
 readonly KIWIPANEL_VERSION="0.1.1"
 readonly KIWIPANEL_PORT=8443
@@ -29,15 +36,18 @@ function get_update_version() {
 # Example usage:
 phpmyadmin_version=$(get_update_version phpmyadmin_version)
 mariadb_version=$(get_update_version mariadb_version)
+golang_version=$(get_update_version golang_version)
 
 echo "PHPMYADMIN_VERSION: $phpmyadmin_version"
 echo "MARIADB_VERSION: $mariadb_version"
+echo "GOLANG_VERSION: $golang_version"
 
-# Utilities ###########################################
+# Utilities ###########################################################
 function PrintGreen() {
     local GREEN='\033[0;32m'
     local NC='\033[0m'
     local content="${1}"
+    echo ""
     printf "${GREEN}${content}${NC}\n"
 }
 function PrintRed() {
@@ -77,7 +87,7 @@ if [[ $(whoami) != "root" ]]; then
 fi
 
 # Set the Go version you want to install
-GO_VERSION="1.21.6" # Update this to the desired Go version
+GO_VERSION="$golang_version"
 # Set the Go installation directory
 GO_INSTALL_DIR="/usr/local"
 # Detect the system's architecture
@@ -86,12 +96,11 @@ ARCHITECTURE=$(uname -m)
 # Download and install Go
 function install_go() {
     # Check if Go is already installed
-    if type go &>/dev/null; then
+    if [ -x "$(command -v go)" ]; then
         installed_version=$(go version | awk '{print $3}')
         echo "Go is already installed. Version: ${installed_version}"
         return
     fi
-
     # Download Go binary based on architecture
     case "$ARCHITECTURE" in
     "x86_64")
@@ -124,7 +133,6 @@ function check_install_go() {
     PrintGreen "Start to install Golang..."
     sleep 3
     # Check if Go is already installed
-    #if command -v go &> /dev/null; then
     if type go &>/dev/null; then
         installed_version=$(go version | awk '{print $3}')
         echo "Go is already installed. Version: ${installed_version}"
@@ -337,7 +345,7 @@ readonly disk_size_gb=$((${disk_size_bytes} / 1024 / 1024))
 readonly current_swap=$(free | awk '/^Swap:/ {print $3}')
 readonly cpu_cores=$(grep -c "processor" /proc/cpuinfo)
 
-# verify the system has minimum requirements met
+# Verify the system has minimum requirements met
 if [[ "${rootfs_type}" != "ext4" && "${rootfs_type}" != "xfs" ]]; then
     echo "Error: KiwiPanel requires '/' to be ext4 or xfs" # see #364
     exit 1
@@ -400,7 +408,7 @@ WEBINOLY="/opt/webinoly/webinoly.conf"
 CYBERPANEL="/usr/local/lscp"
 WPTANGTOC="/etc/wptt/.wptt.conf"
 HOSTVN="var/hostvn/hostvn.conf"
-#KIWIPANEL="/home/state/kiwipanel.conf"
+KIWIPANEL="/home/state/kiwipanel.conf"
 
 function check_panel_script() {
     PrintGreen "Checking the existing script or panel... You should install KiwiPanel on a fresh compute!"
@@ -491,6 +499,41 @@ function check_panel_script() {
         exit
     fi
 
+    if [ -f "$KIWIPANEL" ]; then
+        PrintRed "Your server have installed KIWIPANEL script, you should log into it using your personal confidential account!"
+        # Ask for instructions regardless of whether the kiwipanel.conf file is found
+        echo "What would you like to do?"
+        echo "1. Start KIWIPANEL"
+        echo "2. Stop KIWIPANEL"
+        echo "3. Check KIWIPANEL status"
+        echo "4. Exit"
+
+        read -rp "Enter your choice (1-4): " choice
+        case "$choice" in
+        1)
+            echo "Starting KIWIPANEL..."
+            # Add your commands to start KIWIPANEL here
+            ;;
+        2)
+            echo "Stopping KIWIPANEL..."
+            # Add your commands to stop KIWIPANEL here
+            ;;
+        3)
+            echo "Checking KIWIPANEL status..."
+            # Add your commands to check KIWIPANEL status here
+            ;;
+        4)
+            echo "Exiting..."
+            exit 0
+            ;;
+        *)
+            echo "Invalid choice. Exiting..."
+            exit 1
+            ;;
+        esac
+        exit
+    fi
+
     PrintGreen "That is good! The VPS is freshly installed. You are good to go..."
     sleep 2
 }
@@ -514,7 +557,6 @@ function check_os() {
     echo "Your current Linux distro: ${distro}"
     if [[ "$distro" == "Ubuntu" || "$distro" == "Debian" ]]; then
         #Ref: https://www.aapanel.com/new/download.html#install
-
         if [[ "$distro" == "Debian" ]]; then
             DebianCheck=$(cat /etc/debian_version)
             # Comparing string
@@ -557,7 +599,7 @@ function check_port_usage() {
 }
 
 function check_condition_before_install() {
-    PrintGreen "✔️ Evaluating your VPS before installing KiwiPanel....."
+    PrintGreen "Evaluating your VPS before installing KiwiPanel....."
     sleep 2
     check_os
     check_architecture
@@ -600,14 +642,12 @@ function create_swap() {
 }
 
 function UpdateUbuntu() {
-    printf " \n"
-    echo "$(tput setaf 2)Updating the system....$(tput sgr0)"
+    PrintGreen "Updating the system..."
     sleep 3
     sudo apt-get update && sudo apt-get -y upgrade
 }
 function BaseCentos() {
-    printf " \n"
-    echo "$(tput setaf 2)Installing the base tools....$(tput sgr0)"
+    PrintGreen "Installing the base tools..."
     sleep 3
     sudo yum install wget curl git zip unzip nano lsof -y
 }
@@ -812,7 +852,7 @@ function main() {
     remove_apache2
     check_install_go
     clone_repository
-    open_port $($KIWIPANEL_PORT)
+    open_port "$KIWIPANEL_PORT"
     create_state
     start_systemd
     setup_kiwipanel
