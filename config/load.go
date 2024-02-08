@@ -50,8 +50,16 @@ func NewConfigServer() *Config {
 }
 
 func NewENV() *ENV {
-	envfile := "/home/scaffolding/" + ".env"
-	err := godotenv.Load(envfile)
+	//Uncomment and use the following file in case of production or on the Linux environment.
+	//envfile := "/home/scaffolding/" + ".env"
+
+	dir, err := os.Getwd()
+	if err != nil {
+		log.Fatal("Cannot find the folder - Inside load.go:  ", err)
+	}
+
+	envfile := dir + "/.env"
+	err = godotenv.Load(envfile)
 	if err != nil {
 		log.Fatal("Error loading .env file: ", err)
 	}

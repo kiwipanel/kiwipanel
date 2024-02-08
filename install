@@ -54,6 +54,7 @@ function PrintRed() {
     local RED='\033[0;31m'
     local NC='\033[0m'
     local content="${1}"
+    echo ""
     printf "${RED}Error: ${content}${NC}\n"
 }
 
