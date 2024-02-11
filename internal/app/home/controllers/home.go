@@ -41,7 +41,7 @@ func (app *Controller) Homepage(c echo.Context) error {
 		return c.String(http.StatusNotAcceptable, "Passcode is not correct. err - authentication failed")
 	}
 
-	return c.Render(http.StatusOK, "base", "")
+	return c.Render(http.StatusOK, "login", "")
 	return c.String(http.StatusOK, "Hello there, kiwipanel.org!. It is good, update")
 
 }

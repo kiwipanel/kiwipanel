@@ -26,8 +26,8 @@ func Dir() string {
 
 var (
 	theme                string = "default" //Can be configured if needed
-	basefile_development string = Dir() + "/internal/templates/" + theme + "/*/*.tmpl"
-	basefile_production  string = "/home/scaffolding/internal/templates/" + theme + "/*/*.tmpl"
+	basefile_development string = Dir() + "/internal/templates/" + theme + "/*/*.*"
+	basefile_production  string = "/home/scaffolding/internal/templates/" + theme + "/*/*.*"
 	runtime              string = "development"
 )
 
