@@ -12,7 +12,7 @@ KiwiPanel is a lightweight control panel designed to help you efficiently manage
 - Hetzner:          tested - automatically opens the port 8443.
 - Linode:           tested - automatically opens the port 8443.
 - Crunchbits:       tested - automatically opens the port 8443.
-
+- Oracle:           tested - you have to manually open the port 443 using its dashboard.
 
 ### References
 - https://github.com/hestiacp/hestiacp
