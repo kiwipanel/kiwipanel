@@ -191,6 +191,11 @@ function generatePassword {
 password=$(generatePassword 12)
 echo "Generated Password: $password"
 
+function generate_random_string() {
+    cat /dev/urandom | tr -dc 'a-z0-9' | head -c 9
+}
+readonly kiwipanel_passcode=$(generate_random_string)
+
 function SetLogFile {
     export LOG_FILE="/tmp/install_kiwipanel.debug"
 
