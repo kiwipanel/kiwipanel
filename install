@@ -362,10 +362,22 @@ if [[ "${disk_size_gb}" -lt "${MINIMUM_DISK_SIZE_GB}" ]]; then
     exit 1
 fi
 
+function generatePassword {
+    LENGTH="16"
+    if [ ! -z "$1" ]; then
+        LENGTH="$1"
+    fi
+    echo $(openssl rand -base64 64 | tr -dc a-zA-Z0-9=+ | fold -w ${LENGTH} | head -1)
+}
+
+
 function generate_random_string() {
     cat /dev/urandom | tr -dc 'a-z0-9' | head -c 9
 }
 readonly kiwipanel_passcode=$(generate_random_string)
+readonly kiwipanel_username=$(generate_random_string)
+readonly kiwipanel_password=$(generatePassword 12)
+
 
 function change_directory() {
     cd "$1" || return
@@ -650,13 +662,13 @@ function UpdateUbuntu() {
 function BaseCentos() {
     PrintGreen "Installing the base tools..."
     sleep 3
-    sudo yum install wget curl git zip unzip nano lsof -y
+    sudo yum install wget curl git zip unzip nano openssl lsof -y
 }
 function BaseUbuntu() {
     printf " \n"
     echo "$(tput setaf 2)Installing the base tools....$(tput sgr0)"
     sleep 3
-    sudo apt install wget curl git zip unzip nano lsof -y
+    sudo apt install wget curl git zip unzip nano openssl lsof -y
 }
 
 # Install the base system for the specified distribution.
@@ -739,6 +751,12 @@ function create_passcode() {
     echo "passcode:$kiwipanel_passcode" >>"$kiwi_config_file"
     PrintGreen "Passcode $kiwipanel_passcode is generated and save to kiwipanel.conf"
 }
+function create_root_user() {
+    # Append the username and password to the configuration file
+    echo "username:$kiwipanel_username" >>"$kiwi_config_file"
+    echo "password:$kiwipanel_password" >>"$kiwi_config_file"
+    PrintGreen "Username: $kiwipanel_passcode and password: $kiwipanel_password are generated and save to kiwipanel.conf"
+}
 function create_database() {
     folder_path="/home/state/database"
     file_path="$folder_path/kiwipanel.sqlite"
@@ -773,6 +791,7 @@ function create_database() {
 }
 function create_state() {
     create_passcode
+    create_root_user
     create_database
 }
 readonly kiwipanel_service=$(
