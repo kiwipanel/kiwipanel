@@ -11,7 +11,7 @@
 
 ######################################################################
 # KiwiPanel Installer v0.0.1
-# To install KiwiPanel type, copy the following instruction and paste to the terminal
+# To install KiwiPanel copy the following instruction and paste to the terminal: 
 # curl -sLO # curl -sLO https://install.kiwipanel.org/install && chmod +x install && sudo bash install
 ######################################################################
 clear
@@ -755,7 +755,7 @@ function create_root_user() {
     # Append the username and password to the configuration file
     echo "username:$kiwipanel_username" >>"$kiwi_config_file"
     echo "password:$kiwipanel_password" >>"$kiwi_config_file"
-    PrintGreen "Username: $kiwipanel_passcode and password: $kiwipanel_password are generated and save to kiwipanel.conf"
+    PrintGreen "Username: $kiwipanel_username and password: $kiwipanel_password are generated and save to kiwipanel.conf"
 }
 function create_database() {
     folder_path="/home/state/database"
