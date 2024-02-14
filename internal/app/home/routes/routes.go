@@ -10,4 +10,6 @@ func PublicRoutes(r *echo.Echo) {
 	r.GET("/", controller.Homepage)
 	r.GET("/:passcode", controller.Homepage)
 	r.GET("/hello", controller.Hello)
+	r.POST("/home/login", controller.Login)
+
 }
