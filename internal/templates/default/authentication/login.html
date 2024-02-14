@@ -1,12 +1,13 @@
 {{define "login"}}
 {{template "base" . }}
 <div class="container-xxl d-flex justify-content-center align-items-center vh-100">
-    <div class="row w-50 border border-primary p-5">
+    <div class="row w-50 border p-5">
         <div class="col-10">
             <div class = "mt-4">
-                <form>
+                <form action='/home/login' method='POST'>
                     <div class="form-group">
-                      <label for="exampleInputEmail1 pb-2">Username:</label>
+                      <h3 class = "text-center">KiwiPanel</h3>
+                      <label for="exampleInputEmail1 pb-4">Username:</label>
                       <input type="email" class="form-control" id="exampleInputEmail1" aria-describedby="emailHelp" placeholder="Enter email">
                       <small id="emailHelp" class="form-text text-muted">Use your usename generated to login.</small>
                     </div>
