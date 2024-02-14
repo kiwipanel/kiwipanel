@@ -1,25 +1,25 @@
 {{define "login"}}
 {{template "base" . }}
-<div class="container-xxl">
-    <div class="row">
-        <div class="col-3"></div>
-        <div class="col-6">
+<div class="container-xxl d-flex justify-content-center align-items-center vh-100">
+    <div class="row w-50 border border-primary p-5">
+        <div class="col-10">
             <div class = "mt-4">
                 <form>
                     <div class="form-group">
-                      <label for="exampleInputEmail1">Email address</label>
+                      <label for="exampleInputEmail1 pb-2">Username:</label>
                       <input type="email" class="form-control" id="exampleInputEmail1" aria-describedby="emailHelp" placeholder="Enter email">
-                      <small id="emailHelp" class="form-text text-muted">We'll never share your email with anyone else.</small>
+                      <small id="emailHelp" class="form-text text-muted">Use your usename generated to login.</small>
                     </div>
                     <div class="form-group">
                       <label for="exampleInputPassword1">Password</label>
                       <input type="password" class="form-control" id="exampleInputPassword1" placeholder="Password">
+                      <small id="emailHelp" class="form-text text-muted">Use your password generated to login.</small>
+
                     </div>
-                    <button type="submit" class="btn btn-primary">Submit</button>
+                    <button type="submit" class="mt-2 btn btn-primary">Login</button>
                   </form>
                 
             </div>
-        <div class="col-3"></div>
     </div>
 </div>
 
