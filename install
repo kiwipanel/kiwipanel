@@ -662,13 +662,13 @@ function UpdateUbuntu() {
 function BaseCentos() {
     PrintGreen "Installing the base tools..."
     sleep 3
-    sudo yum install wget curl git zip unzip nano openssl lsof -y
+    sudo yum install wget curl git zip unzip nano openssl cron lsof -y
 }
 function BaseUbuntu() {
     printf " \n"
     echo "$(tput setaf 2)Installing the base tools....$(tput sgr0)"
     sleep 3
-    sudo apt install wget curl git zip unzip nano openssl lsof -y
+    sudo apt install wget curl git zip unzip nano openssl cron lsof -y
 }
 
 # Install the base system for the specified distribution.
