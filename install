@@ -701,8 +701,8 @@ function remove_apache2() {
 function clone_repository() {
     PrintGreen "Cloning the code from github.com/kiwipanel"
     cd /home
-    sudo git clone https://github.com/kiwipanel/scaffolding.git
-    cd scaffolding
+    sudo git clone https://github.com/kiwipanel/kiwipanel.git
+    cd kiwipanel
     go build -o bin/kiwipanel
 }
 
@@ -802,8 +802,8 @@ Description=Kiwipanel application
 Type=simple
 Restart=always
 RestartSec=5s
-WorkingDirectory=/home/scaffolding/bin
-ExecStart=/home/scaffolding/bin/kiwipanel start
+WorkingDirectory=/home/kiwipanel/bin
+ExecStart=/home/kiwipanel/bin/kiwipanel start
 [Install]
 WantedBy=multi-user.target
 EOF
