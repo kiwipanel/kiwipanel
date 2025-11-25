@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"reflect"
 
-	"github.com/kiwipanel/scaffolding/internal/app/panel/models"
-	"github.com/kiwipanel/scaffolding/pkg/helpers"
+	"github.com/kiwipanel/kiwpanel/internal/app/panel/models"
+	"github.com/kiwipanel/kiwpanel/pkg/helpers"
 	"github.com/labstack/echo-contrib/session"
 	"github.com/labstack/echo/v4"
 )

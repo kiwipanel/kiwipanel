@@ -1,8 +1,8 @@
 package routing
 
 import (
-	"github.com/kiwipanel/scaffolding/config"
-	"github.com/kiwipanel/scaffolding/internal/providers/routes"
+	"github.com/kiwipanel/kiwpanel/config"
+	"github.com/kiwipanel/kiwpanel/internal/providers/routes"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 )

@@ -1,9 +1,9 @@
 package routes
 
 import (
-	"github.com/kiwipanel/scaffolding/config"
-	admin "github.com/kiwipanel/scaffolding/internal/app/admin/routes"
-	public "github.com/kiwipanel/scaffolding/internal/app/home/routes"
+	"github.com/kiwipanel/kiwpanel/config"
+	admin "github.com/kiwipanel/kiwpanel/internal/app/admin/routes"
+	public "github.com/kiwipanel/kiwpanel/internal/app/home/routes"
 	"github.com/labstack/echo/v4"
 )
 

@@ -3,7 +3,7 @@ package web
 import (
 	"fmt"
 
-	"github.com/kiwipanel/scaffolding/pkg/bootstrap"
+	"github.com/kiwipanel/kiwpanel/pkg/bootstrap"
 
 	"github.com/spf13/cobra"
 )

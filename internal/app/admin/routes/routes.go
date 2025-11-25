@@ -1,8 +1,8 @@
 package routes
 
 import (
-	"github.com/kiwipanel/scaffolding/config"
-	"github.com/kiwipanel/scaffolding/internal/app/admin/controllers"
+	"github.com/kiwipanel/kiwpanel/config"
+	"github.com/kiwipanel/kiwpanel/internal/app/admin/controllers"
 	"github.com/labstack/echo/v4"
 )
 

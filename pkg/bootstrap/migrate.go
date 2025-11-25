@@ -1,8 +1,8 @@
 package bootstrap
 
 import (
-	"github.com/kiwipanel/scaffolding/pkg/database"
-	"github.com/kiwipanel/scaffolding/pkg/database/schema"
+	"github.com/kiwipanel/kiwpanel/pkg/database"
+	"github.com/kiwipanel/kiwpanel/pkg/database/schema"
 )
 
 func Migrate() {

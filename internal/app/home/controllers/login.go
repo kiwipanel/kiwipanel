@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/kiwipanel/scaffolding/pkg/helpers"
+	"github.com/kiwipanel/kiwpanel/pkg/helpers"
 	"github.com/labstack/echo-contrib/session"
 	"github.com/labstack/echo/v4"
 )

@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/kiwipanel/scaffolding/cmd/web"
+	"github.com/kiwipanel/kiwpanel/cmd/web"
 )
 
 func main() {

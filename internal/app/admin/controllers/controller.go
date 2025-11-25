@@ -1,6 +1,6 @@
 package controllers
 
-import "github.com/kiwipanel/scaffolding/config"
+import "github.com/kiwipanel/kiwpanel/config"
 
 type Controller struct {
 	config *config.AppConfig

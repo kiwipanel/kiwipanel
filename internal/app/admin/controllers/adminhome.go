@@ -5,7 +5,7 @@ import (
 	"math/rand"
 	"net/http"
 
-	"github.com/kiwipanel/scaffolding/internal/app/admin/models"
+	"github.com/kiwipanel/kiwpanel/internal/app/admin/models"
 	"github.com/labstack/echo/v4"
 )
 

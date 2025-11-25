@@ -1,7 +1,7 @@
 package models
 
 import (
-	"github.com/kiwipanel/scaffolding/pkg/database/schema"
+	"github.com/kiwipanel/kiwpanel/pkg/database/schema"
 	"gorm.io/gorm"
 )
 

@@ -3,12 +3,12 @@ package bootstrap
 import (
 	"fmt"
 
-	"github.com/kiwipanel/scaffolding/config"
-	"github.com/kiwipanel/scaffolding/pkg/database"
-	"github.com/kiwipanel/scaffolding/pkg/routing"
-	"github.com/kiwipanel/scaffolding/pkg/sessionstore"
-	"github.com/kiwipanel/scaffolding/pkg/ui/static"
-	"github.com/kiwipanel/scaffolding/pkg/ui/view"
+	"github.com/kiwipanel/kiwpanel/config"
+	"github.com/kiwipanel/kiwpanel/pkg/database"
+	"github.com/kiwipanel/kiwpanel/pkg/routing"
+	"github.com/kiwipanel/kiwpanel/pkg/sessionstore"
+	"github.com/kiwipanel/kiwpanel/pkg/ui/static"
+	"github.com/kiwipanel/kiwpanel/pkg/ui/view"
 )
 
 var app config.AppConfig

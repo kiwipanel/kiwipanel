@@ -1,17 +1,17 @@
 #!/bin/bash
 ######################################################################
-#           KiwiPanel - a LEMP Stack on Ubuntu||Debian               #
+#           KiwiPanel - a LEMP Stack on Debian                       #
 #                                                                    #
 #                Author: Vuong Nguyen and contributors               #
-#                  Website: https://kiwipanel.org                    #
-#                  @since: 2024                                      #
+#                  Website: https://kiwipanel.com                    #
+#                  @since: 2025                                      #
 #              Please do not remove copyright. Thanks!               #
 #  Please do not copy under any circumstance for commercial reason!  #
 ######################################################################
 
 ######################################################################
 # KiwiPanel Installer v0.0.1
-# To install KiwiPanel copy the following instruction and paste to the terminal: 
+# To install KiwiPanel copy the following instruction and paste to the terminal:
 # curl -sLO # curl -sLO https://install.kiwipanel.org/install && chmod +x install && sudo bash install
 ######################################################################
 clear
@@ -845,12 +845,12 @@ function successMessage() {
     elapsed=$((kiwipanel_d_end_time - kiwipanel_d_start_time))
     echo "$(tput setaf 2)Total time installed: ${elapsed} seconds.$(tput sgr0)"
     printf " \n"
-    echo "    
-    "$(tput setaf 2)================================Install KiwiPanel Done!==============================$(tput sgr0)"        
-    
-    Register and Login at : http://$IPADDRESS:$KIWIPANEL_PORT/$kiwipanel_passcode     
+    echo "
+    "$(tput setaf 2)================================Install KiwiPanel Done!==============================$(tput sgr0)"
 
-    "$(tput setaf 2)=====================================================================================$(tput sgr0)"    
+    Register and Login at : http://$IPADDRESS:$KIWIPANEL_PORT/$kiwipanel_passcode
+
+    "$(tput setaf 2)=====================================================================================$(tput sgr0)"
     "
 }
 
