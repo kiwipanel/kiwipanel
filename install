@@ -409,10 +409,15 @@ CYBERPANEL="/usr/local/lscp"
 WPTANGTOC="/etc/wptt/.wptt.conf"
 HOSTVN="var/hostvn/hostvn.conf"
 KIWIPANEL="/home/state/kiwipanel.conf"
+AAPANEL="/www/server/panel"
 
 function check_panel_script() {
     PrintGreen "Checking the existing script or panel... You should install KiwiPanel on a fresh compute!"
     sleep 3
+
+    if [ -d AAPANEL ] || [ -f /usr/bin/bt ]; then
+        PrintRed "Your server installed AAPANEL, please reinstall to use KiwiPanel"
+        exit
 
     if [ -f /var/cpanel/cpanel.config ] || [ -f "$CPANEL" ]; then
         PrintRed "Your server installed WHM/Cpanel, please reinstall to use KiwiPanel"
@@ -555,8 +560,7 @@ function check_os() {
     sleep 2
     echo "Your current Kernel: ${kernel_version}"
     echo "Your current Linux distro: ${distro}"
-    if [[ "$distro" == "Ubuntu" || "$distro" == "Debian" ]]; then
-        #Ref: https://www.aapanel.com/new/download.html#install
+    if [[ "$distro" == "Ubuntu" || "$distro" == "Debian" ]]; then        
         if [[ "$distro" == "Debian" ]]; then
             DebianCheck=$(cat /etc/debian_version)
             # Comparing string

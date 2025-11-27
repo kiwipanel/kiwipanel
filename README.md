@@ -6,6 +6,8 @@ KiwiPanel is a lightweight control panel designed to help you efficiently manage
 
 ### Install
 
+curl -s https://raw.githubusercontent.com/kiwipanel/kiwipanel/refs/heads/main/install | bash
+
 ##### Port 8443:
 - Amazon Lightsail: tested - you have to manually open the port 8443 inside its dashboard.
 - Cloudcone:        tested - automatically opens the port 8443.
