@@ -413,135 +413,85 @@ AAPANEL="/www/server/panel"
 
 function check_panel_script() {
     PrintGreen "Checking the existing script or panel... You should install KiwiPanel on a fresh compute!"
-    sleep 3
-
-    if [ -d AAPANEL ] || [ -f /usr/bin/bt ]; then
-        PrintRed "Your server installed AAPANEL, please reinstall to use KiwiPanel"
-        exit
-
-    if [ -f /var/cpanel/cpanel.config ] || [ -f "$CPANEL" ]; then
-        PrintRed "Your server installed WHM/Cpanel, please reinstall to use KiwiPanel"
-        exit
-    fi
-
-    if [ -f "$PLESK" ]; then
-        echo "Your server installed Plesk, please reinstall to use KiwiPanel."
-        exit
-    fi
-
-    if [ -f "$KUSANAGI" ]; then
-        echo "Your server installed KUSANAGI, please reinstall to use KiwiPanel."
-        exit
-    fi
-
-    if [ -f "$DIRECTADMIN" ]; then
-        echo "Your server installed DirectAdmin, please reinstall to use KiwiPanel."
-        exit
-    fi
-
-    if [ -f "$WEBMIN" ]; then
-        echo "Your server installed Webmin, please reinstall to use KiwiPanel."
-        exit
-    fi
-
-    if [ -f "$WEBINOLY" ]; then
-        PrintRed "Your server installed WEBINOLY, please reinstall to use KiwiPanel!"
-        exit
-    fi
-
-    if [ -f "$TINO" ]; then
-        PrintRed "Your server installed TINO, please reinstall to use KiwiPanel!"
-        exit
-    fi
-
-    if [ -f "$VPSSIM" ]; then
-        PrintRed "Your server installed VPSSIM, please reinstall to use KiwiPanel!"
-        exit
-    fi
-
-    if [ -f "$EEV4" ]; then
-        PrintRed "Your server installed EEV4, please reinstall to use KiwiPanel!"
-        exit
-    fi
-
-    if [ -f "$HOCVPS" ]; then
-        PrintRed "Your server installed HOCVPS, please reinstall to use KiwiPanel!"
-        exit
-    fi
-
-    if [ -f "$VESTA" ]; then
-        PrintRed "Your server installed VESTA, please reinstall to use KiwiPanel!"
-        exit
-    fi
-
-    if [ -f "$SENTORA" ]; then
-        PrintRed "Your server installed SENTORA, please reinstall to use KiwiPanel!"
-        exit
-    fi
-
-    if [ -f "$WORDOPS" ]; then
-        PrintRed "Your server installed WORDOPS, please reinstall to use KiwiPanel!"
-        exit
-    fi
-
-    if [[ -d "$CYBERPANEL" ]]; then
-        PrintRed "Your server installed Cyberpanel, please reinstall to use KiwiPanel!"
-        exit
-    fi
-
-    if [ -f "$WPTANGTOC" ]; then
-        PrintRed "Your server installed WPTangToc OLS, please reinstall to use KiwiPanel!"
-        exit
-    fi
-
-    if [ -f "$HOSTVN" ]; then
-        PrintRed "Your server installed HOSTVN script, please reinstall to use KiwiPanel!"
-        exit
-    fi
-
-    if [[ -d /usr/local/lsws || -d /home/lsws ]]; then
-        PrintRed "Your server installed LiteSpeed Webserver, please reinstall your OS to use KiwiPanel! By default, KiwiPanel runs Nginx. Apache, LiteSpeed and Caddy will be supported in the future"
-        exit
-    fi
-
-    if [ -f "$KIWIPANEL" ]; then
-        PrintRed "Your server have installed KIWIPANEL script, you should log into it using your personal confidential account!"
-        # Ask for instructions regardless of whether the kiwipanel.conf file is found
-        echo "What would you like to do?"
-        echo "1. Start KIWIPANEL"
-        echo "2. Stop KIWIPANEL"
-        echo "3. Check KIWIPANEL status"
-        echo "4. Exit"
-
-        read -rp "Enter your choice (1-4): " choice
-        case "$choice" in
-        1)
-            echo "Starting KIWIPANEL..."
-            # Add your commands to start KIWIPANEL here
-            ;;
-        2)
-            echo "Stopping KIWIPANEL..."
-            # Add your commands to stop KIWIPANEL here
-            ;;
-        3)
-            echo "Checking KIWIPANEL status..."
-            # Add your commands to check KIWIPANEL status here
-            ;;
-        4)
-            echo "Exiting..."
-            exit 0
-            ;;
-        *)
-            echo "Invalid choice. Exiting..."
-            exit 1
-            ;;
-        esac
-        exit
-    fi
-
-    PrintGreen "That is good! The VPS is freshly installed. You are good to go..."
     sleep 2
+
+    # aaPanel
+    if [ -d /www/server/panel ] || [ -f /usr/bin/bt ]; then
+        PrintRed "Your server has aaPanel installed, please reinstall your OS to use KiwiPanel"
+        exit 1
+    fi
+
+    # cPanel / WHM
+    if [ -f /var/cpanel/cpanel.config ]; then
+        PrintRed "Your server has WHM/cPanel installed, please reinstall your OS to use KiwiPanel"
+        exit 1
+    fi
+
+    # Plesk
+    if [ -d /usr/local/psa ]; then
+        PrintRed "Your server has Plesk installed, please reinstall your OS to use KiwiPanel"
+        exit 1
+    fi
+
+    # Kusanagi
+    if [ -f /etc/kusanagi ]; then
+        PrintRed "Your server has Kusanagi installed, please reinstall your OS to use KiwiPanel"
+        exit 1
+    fi
+
+    # DirectAdmin
+    if [ -f /usr/local/directadmin/conf/directadmin.conf ]; then
+        PrintRed "Your server has DirectAdmin installed, please reinstall your OS to use KiwiPanel"
+        exit 1
+    fi
+
+    # Webmin
+    if [ -f /etc/webmin/miniserv.conf ]; then
+        PrintRed "Your server has Webmin installed, please reinstall your OS to use KiwiPanel"
+        exit 1
+    fi
+
+    # Webinoly
+    if [ -d /opt/webinoly ]; then
+        PrintRed "Your server has Webinoly installed, please reinstall your OS to use KiwiPanel"
+        exit 1
+    fi
+
+    # CyberPanel
+    if [ -d /usr/local/CyberPanel ]; then
+        PrintRed "Your server has CyberPanel installed, please reinstall your OS to use KiwiPanel"
+        exit 1
+    fi
+
+    # LiteSpeed (OLS or Enterprise)
+    if [ -d /usr/local/lsws ] || [ -d /home/lsws ]; then
+        PrintRed "Your server has LiteSpeed installed — KiwiPanel currently requires Nginx."
+        exit 1
+    fi
+
+    # KiwiPanel already installed
+    if [ -f /home/state/kiwipanel.conf ]; then
+        PrintRed "KiwiPanel is already installed on this server!"
+        # menu
+        echo "1. Start"
+        echo "2. Stop"
+        echo "3. Status"
+        echo "4. Exit"
+        read -rp "Choice: " choice
+        case "$choice" in
+            1) systemctl start kiwipanel ;;
+            2) systemctl stop kiwipanel ;;
+            3) systemctl status kiwipanel ;;
+            4) exit 0 ;;
+            *) echo "Invalid choice"; exit 1 ;;
+        esac
+    fi
+
+    PrintGreen "No conflicting panels detected. Continuing installation..."
+    sleep 1
 }
+
+
 function check_architecture() {
     PrintGreen "Checking ARCHITECTURE... Kiwipanel supports 64 bits system only!"
     sleep 2
