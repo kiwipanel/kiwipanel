@@ -6,28 +6,14 @@ KiwiPanel is a lightweight control panel designed to help you efficiently manage
 
 ### Install
 
-curl -s https://raw.githubusercontent.com/kiwipanel/kiwipanel/refs/heads/main/install | bash
+curl -sLO https://raw.githubusercontent.com/kiwipanel/kiwipanel/main/install && chmod +x install && sudo bash install
 
-##### Port 8443:
-- Amazon Lightsail: tested - you have to manually open the port 8443 inside its dashboard.
-- Cloudcone:        tested - automatically opens the port 8443.
-- Hetzner:          tested - automatically opens the port 8443.
-- Linode:           tested - automatically opens the port 8443.
-- Crunchbits:       tested - automatically opens the port 8443.
-- Oracle:           tested - you have to manually open the port 443 using its dashboard.
+OR
 
-### References
-- https://github.com/hestiacp/hestiacp
-- https://github.com/ConvoyPanel/panel
-- https://blog.cloudflare.com/exposing-go-on-the-internet/
-- https://github.com/wptangtoc/wptangtoc-ols/
-- https://github.com/QROkes/webinoly
-- https://installer.cloudpanel.io/ce/v2/install.sh
-- https://github.com/sanvu88/ubuntu-lemp-stack
-- https://github.com/duy13/HocVPS-Script/tree/master
-- https://github.com/itvn9online/vpssim-free/
-- https://github.com/usmannasir/cyberpanel
-- https://docs.cloudron.io/
+bash <(wget -qO- https://raw.githubusercontent.com/kiwipanel/kiwipanel/main/install)
+
+##### Port 8443: 
+On some cloud service providers such as Amazon Lightsail or Oracle, you have to manually open the port 8443 inside their control dashboards.
 
 ### Dependencies
 - https://github.com/bitfield/script
@@ -46,5 +32,15 @@ curl -s https://raw.githubusercontent.com/kiwipanel/kiwipanel/refs/heads/main/in
 - https://github.com/google/ngx_brotli
 
 
-
+### References
+- https://github.com/hestiacp/hestiacp
+- https://github.com/ConvoyPanel/panel
+- https://github.com/wptangtoc/wptangtoc-ols/
+- https://github.com/QROkes/webinoly
+- https://installer.cloudpanel.io/ce/v2/install.sh
+- https://github.com/sanvu88/ubuntu-lemp-stack
+- https://github.com/duy13/HocVPS-Script/tree/master
+- https://github.com/itvn9online/vpssim-free/
+- https://github.com/usmannasir/cyberpanel
+- https://docs.cloudron.io/
 

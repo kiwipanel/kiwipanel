@@ -1,6 +1,6 @@
 #!/bin/bash
 ######################################################################
-#           KiwiPanel - a LEMP Stack on Debian                       #
+#                  KiwiPanel - a PHP stack on Linux                  #
 #                                                                    #
 #                Author: Vuong Nguyen and contributors               #
 #                  Website: https://kiwipanel.com                    #
@@ -12,7 +12,8 @@
 ######################################################################
 # KiwiPanel Installer v0.0.1
 # To install KiwiPanel copy the following instruction and paste to the terminal:
-# curl -sLO # curl -sLO https://raw.githubusercontent.com/kiwipanel/kiwipanel/refs/heads/main/install && chmod +x install && sudo bash install
+# curl -sLO https://raw.githubusercontent.com/kiwipanel/kiwipanel/main/install && chmod +x install && sudo bash install
+
 ######################################################################
 clear
 date
@@ -20,27 +21,6 @@ LANG=en_US.UTF-8
 locale-gen en_US.UTF-8
 export LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8
 
-# Configuration########################################################
-readonly INSTALL_VERSION="0.1.1"
-readonly KIWIPANEL_VERSION="0.1.1"
-readonly KIWIPANEL_PORT=8443
-readonly UPDATE_LINK="https://api.kiwipanel.com/update.txt"
-
-function get_update_version() {
-    PARAMETER=$1
-    VERSION=$(curl -s "${UPDATE_LINK}" | grep "${PARAMETER}=" | cut -f2 -d'=')
-    # Return the version
-    echo "${VERSION}"
-}
-
-# Example usage:
-phpmyadmin_version=$(get_update_version phpmyadmin_version)
-mariadb_version=$(get_update_version mariadb_version)
-golang_version=$(get_update_version golang_version)
-
-echo "PHPMYADMIN_VERSION: $phpmyadmin_version"
-echo "MARIADB_VERSION: $mariadb_version"
-echo "GOLANG_VERSION: $golang_version"
 
 # Utilities ###########################################################
 function PrintGreen() {
@@ -65,6 +45,14 @@ function PrintWarning() {
     printf "${YELLOW_BROWN}Warning: ${content}${NC}\n"
 }
 
+# Configuration########################################################
+readonly KIWIPANEL_PORT=8443
+readonly KIWI_VERSION="latest"
+readonly INSTALL_DIR="/usr/local/bin"
+readonly OPT_DIR="/opt/kiwipanel"
+readonly SERVICE_FILE="/etc/systemd/system/kiwipanel.service"
+
+# Welcome########################################################
 function ShowLogo {
     local kiwipanel_text=$(
         cat <<"EOF"
@@ -87,70 +75,22 @@ if [[ $(whoami) != "root" ]]; then
     exit 1
 fi
 
-# Set the Go version you want to install
-GO_VERSION="$golang_version"
-# Set the Go installation directory
-GO_INSTALL_DIR="/usr/local"
+#Check if kiwipanel (CLI) has been installed. Stop if yes.
+if systemctl list-unit-files | grep -q "^kiwipanel.service"; then
+    if systemctl is-active --quiet kiwipanel; then        
+        PrintWarning "KiwiPanel service is running. Abort instalation."        
+        exit 1
+    else
+        PrintWarning "KiwiPanel service is running. Abort instalation."        
+        exit 1        
+    fi
+else
+    PrintWarning "KiwiPanel service does not exist. You are good to go."
+fi
+
+
 # Detect the system's architecture
 ARCHITECTURE=$(uname -m)
-
-# Download and install Go
-function install_go() {
-    # Check if Go is already installed
-    if [ -x "$(command -v go)" ]; then
-        installed_version=$(go version | awk '{print $3}')
-        echo "Go is already installed. Version: ${installed_version}"
-        return
-    fi
-    # Download Go binary based on architecture
-    case "$ARCHITECTURE" in
-    "x86_64")
-        GO_BINARY="go${GO_VERSION}.linux-amd64.tar.gz"
-        ;;
-    "aarch64")
-        GO_BINARY="go${GO_VERSION}.linux-arm64.tar.gz"
-        ;;
-    "armv7l")
-        GO_BINARY="go${GO_VERSION}.linux-armv6l.tar.gz"
-        ;;
-    *)
-        echo "Unsupported architecture: $ARCHITECTURE"
-        exit 1
-        ;;
-    esac
-
-    wget "https://go.dev/dl/${GO_BINARY}" -O /tmp/go.tar.gz
-    # Extract Go binary
-    sudo tar -C "${GO_INSTALL_DIR}" -xzf /tmp/go.tar.gz
-    # Add Go binary path to system profile.d
-    echo "export PATH=\$PATH:${GO_INSTALL_DIR}/go/bin" | sudo tee "/etc/profile.d/go.sh"
-    source "/etc/profile.d/go.sh"
-    # Cleanup
-    rm /tmp/go.tar.gz
-    echo "Go ${GO_VERSION} has been installed for ${ARCHITECTURE} architecture."
-}
-
-function check_install_go() {
-    PrintGreen "Start to install Golang..."
-    sleep 3
-    # Check if Go is already installed
-    if type go &>/dev/null; then
-        installed_version=$(go version | awk '{print $3}')
-        echo "Go is already installed. Version: ${installed_version}"
-    else
-        # Add some debugging output
-        echo "Go not found in PATH. Trying to install..."
-        # Install Go without asking for confirmation
-        install_go
-        # Check again after installation
-        if command -v go &>/dev/null; then
-            installed_version=$(go version | awk '{print $3}')
-            echo "Go is installed successfully. Version: ${installed_version}"
-        else
-            echo "There was an issue installing Go. Please check the script and try again."
-        fi
-    fi
-}
 
 #
 kiwi_config_log="/home/state/kiwipanel.log"
@@ -639,13 +579,6 @@ function remove_apache2() {
     sudo rm -r /usr/share/man/man8/apache2.8.gz
 }
 
-function clone_repository() {
-    PrintGreen "Cloning the code from github.com/kiwipanel"
-    cd /home
-    sudo git clone https://github.com/kiwipanel/kiwipanel.git
-    cd kiwipanel
-    go build -o bin/kiwipanel
-}
 
 function open_port() {
     local PORT_NUMBER="$1"
@@ -810,9 +743,7 @@ function main() {
     check_condition_before_install
     create_swap
     install_base
-    remove_apache2
-    check_install_go
-    clone_repository
+    remove_apache2    
     open_port "$KIWIPANEL_PORT"
     create_state
     start_systemd

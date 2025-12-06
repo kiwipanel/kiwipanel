@@ -14,7 +14,7 @@ import (
 var (
 	once                      sync.Once // create sync.Once primitive)
 	DB                        *gorm.DB
-	database_path_development = "state/database/kiwipanel.sqlite"
+	database_path_development = "dev/kiwipanel.db"
 	database_path_production  = "/home/state/database/kiwipanel.sqlite" //external database folder
 	database_path             string
 )
