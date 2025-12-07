@@ -7,7 +7,7 @@
 *.dll
 *.so
 *.dylib
-bin
+/bin
 tmp
 state/database
 tailwindcss

@@ -2,15 +2,19 @@
 
 ALERT: NOT READY FOR PRODUCTION, STILL IN THE EARLY STAGE OF DEVELOPMENT.
 
-KiwiPanel is a lightweight control panel designed to help you efficiently manage your LEMP stack with minimal hassle.
+KiwiPanel is a lightweight control panel designed to help you efficiently manage your LEMP (Linux, Nginx, MariaDB, PHP) and LOMP (Linux, OpenLiteSpeed, MariaDB, PHP) stack with minimal hassle.
 
 ### Install
 
+**Option 1:**
+```bash
 curl -sLO https://raw.githubusercontent.com/kiwipanel/kiwipanel/main/install && chmod +x install && sudo bash install
+```
 
-OR
-
+**Option 2:**
+```bash
 bash <(wget -qO- https://raw.githubusercontent.com/kiwipanel/kiwipanel/main/install)
+```
 
 ##### Port 8443: 
 On some cloud service providers such as Amazon Lightsail or Oracle, you have to manually open the port 8443 inside their control dashboards.

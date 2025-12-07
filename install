@@ -81,7 +81,7 @@ if systemctl list-unit-files | grep -q "^kiwipanel.service"; then
         PrintRed "KiwiPanel service is running. Abort instalation."        
         exit 1
     else
-        PrintRed "KiwiPanel service is running. Abort instalation."        
+        PrintRed "KiwiPanel service is not running but its systemd has been installed. Abort instalation. Please install on a fresh compute."        
         exit 1        
     fi
 else
@@ -108,13 +108,10 @@ echo "✅ Folders created successfully."
 
 #Setting permissions
 echo "🔧 Setting permissions..."
-
 chown -R root:root /opt/kiwipanel
 chmod -R 700 /opt/kiwipanel
-
 chown -R root:root /var/backups/kiwipanel
 chmod -R 700 /var/backups/kiwipanel
-
 # Ensure www folder exists and safe
 chmod 755 /var/www
 
@@ -146,8 +143,6 @@ function run_and_check() {
     fi
 }
 
-#Turn off the current service if any, make sure that it works
-run_and_check "sudo systemctl stop kiwipanel"
 
 function move_nested_file() {
     # Check if both source and destination folders are provided
@@ -214,65 +209,6 @@ function rename_folder() {
 }
 
 
-function create_dir_bash() {
-    # Set the base directory
-    base_dir="/home/state"
-    # Check if the base directory exists
-    if [ ! -d "$base_dir" ]; then
-        mkdir -p "$base_dir"
-        chmod 755 "$base_dir"
-        chown $(whoami):$(whoami) "$base_dir"
-    fi
-
-    # Create the 'database' directory
-    db_dir="$base_dir/database"
-    mkdir -p "$db_dir"
-    chmod 775 "$db_dir"
-    chown -R $(whoami):$(whoami) "$db_dir"
-    # Check if the config files exist and create them if not
-    if [ ! -e "$kiwi_config_log" ]; then
-        touch "$kiwi_config_log"
-        chmod 664 "$kiwi_config_log"
-        chown $(whoami):$(whoami) "$kiwi_config_log"
-    fi
-    if [ ! -e "$kiwi_config_file" ]; then
-        touch "$kiwi_config_file"
-        chmod 664 "$kiwi_config_file"
-        chown $(whoami):$(whoami) "$kiwi_config_file"
-    fi
-}
-
-function create_dir_backup() {
-    mkdir -p /home/backup
-    chmod 755 /home/backup
-}
-
-function backup() {
-    if [ -d "$kiwi_current_state" ]; then
-        echo "The folder /home/state exists, starting backup the current data: $kiwi_current_state"
-        if [ ! -d "$kiwi_current_backup" ]; then
-            echo "Folder kiwi_current_backup, does not exists, create it!"
-            create_dir_backup
-            echo "Starting backup !"
-            sleep 3
-            move_nested_file $kiwi_current_state $kiwi_current_backup
-        else
-            echo "Folder /home/state exists, just backup : $kiwi_current_state"
-            PrintGreen "Rename the backup folder."
-            sleep 3
-            rename_folder $kiwi_current_backup
-            PrintGreen "Create a new empty backup folder."
-            sleep 3
-            move_nested_file $kiwi_current_state $kiwi_current_backup
-        fi
-    else
-        create_dir_bash
-        create_dir_backup
-        PrintGreen "Greate!. It seems you are installing KiwiPanel for the first time!"
-        echo "Creating 2 folders: $kiwi_current_state, $kiwi_current_backup"
-    fi
-}
-backup
 
 #Logging...
 exec 19>>"$kiwi_config_log"
@@ -341,10 +277,6 @@ function change_directory() {
     cd "$1" || return
 }
 
-function tracking() {
-    echo "install:$kiwipanel_d_start_time" >>"$kiwi_config_file"
-    echo "Current epoch time saved to $kiwi_config_file"
-}
 
 ###################################################################################
 function welcome() {
@@ -742,8 +674,7 @@ function setup_kiwipanel() {
     successMessage
 }
 
-function successMessage() {
-    tracking
+function successMessage() {    
     printf " \n"
     PrintGreen "Kiwiscript has been successfully installed on your VPS!"
     kiwipanel_d_end_time=$(date +%s)

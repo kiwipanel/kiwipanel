@@ -1,0 +1,18 @@
+<virtualHost>
+  <name>{{ .Domain }}</name>
+  <vhRoot>/var/www/{{ .Domain }}</vhRoot>
+  <docRoot>/var/www/{{ .Domain }}/public_html</docRoot>
+
+  <accessLog>/var/www/{{ .Domain }}/logs/access.log</accessLog>
+  <errorLog>/var/www/{{ .Domain }}/logs/error.log</errorLog>
+
+  <indexFiles>
+    <index>index.php</index>
+    <index>index.html</index>
+  </indexFiles>
+
+  <php>
+    <handler>lsphp</handler>
+    <version>{{ .PhpVersion }}</version>
+  </php>
+</virtualHost>
