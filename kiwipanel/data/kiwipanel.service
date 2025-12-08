@@ -1,0 +1,10 @@
+[Unit]
+Description=Kiwipanel application
+[Service]
+Type=simple
+Restart=always
+RestartSec=5s
+WorkingDirectory=/opt/kiwipanel/bin/kiwipanel
+ExecStart=/opt/kiwipanel/bin/kiwipanel start
+[Install]
+WantedBy=multi-user.target

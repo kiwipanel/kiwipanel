@@ -1,4 +1,4 @@
-module github.com/kiwipanel/kiwpanel
+module github.com/kiwipanel/kiwipanel
 
 go 1.24.0
 

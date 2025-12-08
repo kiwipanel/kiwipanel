@@ -1,0 +1,22 @@
+{{define "login"}}
+{{template "base" . }}
+<div class="flex justify-center items-center w-full h-screen bg-gray-700">
+  <div class="w-1/3 h-80 mx-auto bg-white p-10 rounded">
+    <form class = "h-full pl-4" action='/home/login' method='POST'>
+      <div class="form-group mb-4">
+        <h3 class="text-center pb-3">KiwiPanel</h3>
+        <label class = "" for="exampleInputEmail1 py-4">Username:</label>
+        <input required type="text" class="w-1/2 px-4 py-2 rounded-md border border-gray-300 focus:outline-none focus:border-blue-500" placeholder="Your usename...">
+        <small id="emailHelp" class="mt-2 block">Use your usename generated to login.</small>
+      </div>
+      <div class="mt-6">
+        <label for="exampleInputPassword1">Password: </label>
+        <input required type="text" class="w-1/2 px-4 py-2 rounded-md border border-gray-300 focus:outline-none focus:border-blue-500" placeholder="Your password...">        
+        <small id="emailHelp" class="mt-2 block">Use your password generated to login.</small>
+      </div>
+      <button type="submit" class="mt-6 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Login</button>
+    </form>
+  </div>
+</div>
+
+{{end}}

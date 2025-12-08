@@ -1,9 +1,15 @@
 run: build
 	@sudo ./bin/kiwipanel start
 build:
-	@go build -o bin/kiwipanel
-dev: build
-	@ ./bin/kiwipanel dev
+	go build -o kiwipanel ./cmd/kiwipanel
+build-zip: build
+	zip -j kiwipanel.zip ./bin/kiwipanel ./configs/sample_config.yaml
+build-amd:	
+	GOOS=linux GOARCH=amd64 go build -o bin/kiwipanel ./cmd/kiwipanel
+build-arm:
+	GOOS=linux GOARCH=arm64 go build -o bin/kiwipanel ./cmd/kiwipanel
+dev:
+	go run ./cmd/kiwipanel dev
 start:
 	@sudo systemctl start kiwipanel
 status:

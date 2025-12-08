@@ -123,8 +123,6 @@ ARCHITECTURE=$(uname -m)
 #
 kiwi_config_log="/home/state/kiwipanel.log"
 kiwi_config_file="/home/state/kiwipanel.conf"
-kiwi_current_state="/home/state"
-kiwi_current_backup="/home/backup"
 
 function run_and_check() {
     local command_to_run="$1"

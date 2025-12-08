@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/kiwipanel/kiwpanel/config"
+	"github.com/kiwipanel/kiwipanel/config"
 	// "gorm.io/driver/sqlite" # needs to use cgo
 	// pure go
 	"github.com/glebarez/sqlite"
@@ -14,8 +14,8 @@ import (
 var (
 	once                      sync.Once // create sync.Once primitive)
 	DB                        *gorm.DB
-	database_path_development = "dev/kiwipanel.db"
-	database_path_production  = "/home/state/database/kiwipanel.sqlite" //external database folder
+	database_path_development = "kiwipanel/data/kiwipanel.db"
+	database_path_production  = "/opt/kiwipanel/data/kiwipanel.sqlite" //external database folder
 	database_path             string
 )
 
