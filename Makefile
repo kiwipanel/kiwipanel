@@ -5,9 +5,9 @@ build:
 build-zip: build
 	zip -j kiwipanel.zip ./bin/kiwipanel ./configs/sample_config.yaml
 build-amd:	
-	GOOS=linux GOARCH=amd64 go build -o bin/kiwipanel ./cmd/kiwipanel
+	GOOS=linux GOARCH=amd64 go build -o kiwipanel/bin/kiwipanel ./cmd/kiwipanel
 build-arm:
-	GOOS=linux GOARCH=arm64 go build -o bin/kiwipanel ./cmd/kiwipanel
+	GOOS=linux GOARCH=arm64 go build -o kiwipanel/bin/kiwipanel ./cmd/kiwipanel
 dev:
 	go run ./cmd/kiwipanel dev
 start:

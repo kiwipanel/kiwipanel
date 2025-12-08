@@ -1,0 +1,21 @@
+server {
+    listen 80;
+    server_name {{.Domain}};
+
+    root {{.Root}};
+    index index.php index.html;
+
+    access_log /var/log/nginx/{{.Domain}}.access.log;
+    error_log /var/log/nginx/{{.Domain}}.error.log;
+
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location ~ \.php$ {
+        fastcgi_pass unix:/run/php/{{.Pool}}.sock;
+        include fastcgi_params;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        fastcgi_param USER {{.User}};
+    }
+}
