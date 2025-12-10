@@ -50,7 +50,7 @@ readonly KIWIPANEL_PORT=8443
 readonly KIWI_VERSION="latest"
 readonly INSTALL_DIR="/usr/local/bin"
 readonly OPT_DIR="/opt/kiwipanel"
-readonly SERVICE_FILE="/etc/systemd/system/kiwipanel.service"
+readonly SERVICE_FILE="/opt/kiwipanel/data/kiwipanel.service"
 
 # Welcome########################################################
 function ShowLogo {
@@ -77,13 +77,9 @@ fi
 
 #Check if kiwipanel (CLI) has been installed. Stop if yes.
 if systemctl list-unit-files | grep -q "^kiwipanel.service"; then
-    if systemctl is-active --quiet kiwipanel; then        
-        PrintRed "KiwiPanel service is running. Abort instalation."        
-        exit 1
-    else
-        PrintRed "KiwiPanel service is not running but its systemd has been installed. Abort instalation. Please install on a fresh compute."        
-        exit 1        
-    fi
+    PrintRed "KiwiPanel service has already been installed. Abort installation."
+    PrintRed "Please install on a fresh compute or manually remove the existing service."
+    exit 1
 else
     PrintGreen "KiwiPanel service does not exist. You are good to go."
 fi
@@ -95,11 +91,6 @@ echo "🔧 Creating KiwiPanel directory structure..."
 # Panel core folders
 mkdir -p /opt/kiwipanel/{bin,config,logs,data,modules,templates,ssl}
 
-# Domain folders
-mkdir -p /var/www
-
-# User folder base
-mkdir -p /home/kiwiusers
 
 # Backup folder
 mkdir -p /var/backups/kiwipanel/{system,users,domains}
@@ -121,8 +112,6 @@ echo "✅ Permissions set."
 # Detect the system's architecture
 ARCHITECTURE=$(uname -m)
 #
-kiwi_config_log="/home/state/kiwipanel.log"
-kiwi_config_file="/home/state/kiwipanel.conf"
 
 function run_and_check() {
     local command_to_run="$1"
@@ -208,10 +197,6 @@ function rename_folder() {
 
 
 
-#Logging...
-exec 19>>"$kiwi_config_log"
-BASH_XTRACEFD=19
-set -x
 
 # Setting and declaring
 
@@ -470,7 +455,28 @@ function check_file_availability() {
     fi
 }
 
-#Create swap
+#====================================Start Installing KiwiPanel ====================================
+#Creating system user and group
+echo "==> Creating kiwipanel system user"
+if ! id kiwipanel >/dev/null 2>&1; then
+    useradd --system --create-home \
+        --home-dir /opt/kiwipanel \
+        --shell /usr/sbin/nologin \
+        kiwipanel
+    echo "Created user: kiwipanel"
+else
+    echo "User kiwipanel already exists"
+fi
+
+echo "==> Creating ksecure group"
+if ! getent group ksecure >/dev/null 2>&1; then
+    groupadd ksecure
+    echo "Created group: ksecure"
+else
+    echo "Group ksecure already exists"
+fi
+
+#Create swap====================================
 #Recommendation about the amount of swap:
 #https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/managing_storage_devices/getting-started-with-swap_managing-storage-devices
 function create_swap() {
@@ -629,29 +635,10 @@ function create_state() {
     create_root_user
     create_database
 }
-readonly kiwipanel_service=$(
-    cat <<EOF
-[Unit]
-Description=Kiwipanel application
-[Service]
-Type=simple
-Restart=always
-RestartSec=5s
-WorkingDirectory=/home/kiwipanel/bin
-ExecStart=/home/kiwipanel/bin/kiwipanel start
-[Install]
-WantedBy=multi-user.target
-EOF
-)
-function create_systemd() {
-    PrintGreen "Creating systemd-based service for running kiwipanel..."
-    sleep 3
-    local file_path="/etc/systemd/system/kiwipanel.service"
-    echo "$kiwipanel_service" >"$file_path" #write file
-    echo "File $file_path created successfully."
-}
+
+
 function start_systemd() {
-    create_systemd
+    
     #sudo systemctl daemon-reload
     run_and_check "sudo systemctl daemon-reload"
     #sudo systemctl start kiwipanel

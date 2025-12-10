@@ -1,10 +1,14 @@
 [Unit]
-Description=Kiwipanel application
+Description=KiwiPanel Server
+After=network.target
 [Service]
 Type=simple
+User=kiwipanel
+Group=kiwipanel
 Restart=always
 RestartSec=5s
 WorkingDirectory=/opt/kiwipanel/bin/kiwipanel
 ExecStart=/opt/kiwipanel/bin/kiwipanel start
 [Install]
 WantedBy=multi-user.target
+
