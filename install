@@ -20,7 +20,22 @@ date
 LANG=en_US.UTF-8
 locale-gen en_US.UTF-8
 export LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8
+# Stop on error 
 set -e
+
+# Check for sudo/root privileges######################################
+if [ "$(id -u)" -ne 0 ]; then
+    PrintRed "❌ You should install KiwiPanel as root or using sudo command."
+    exit 1
+fi
+
+# Configuration########################################################
+readonly KIWIPANEL_PORT=8443
+readonly KIWI_VERSION="latest"
+readonly INSTALL_DIR="/usr/local/bin"
+readonly OPT_DIR="/opt/kiwipanel"
+readonly SERVICE_FILE="/opt/kiwipanel/data/kiwipanel.service"
+
 
 # Utilities ###########################################################
 function PrintGreen() {
@@ -45,12 +60,7 @@ function PrintWarning() {
     printf "${YELLOW_BROWN}Warning: ${content}${NC}\n"
 }
 
-# Configuration########################################################
-readonly KIWIPANEL_PORT=8443
-readonly KIWI_VERSION="latest"
-readonly INSTALL_DIR="/usr/local/bin"
-readonly OPT_DIR="/opt/kiwipanel"
-readonly SERVICE_FILE="/opt/kiwipanel/data/kiwipanel.service"
+
 
 # Welcome########################################################
 function ShowLogo {
@@ -69,11 +79,8 @@ EOF
     echo ""
 }
 
-# Check for sudo/root privileges######################################
-if [[ $(whoami) != "root" ]]; then
-    PrintRed "You should install KiwiPanel as root or using sudo command."
-    exit 1
-fi
+
+
 
 #Check if kiwipanel (CLI) has been installed. Stop if yes.
 if systemctl list-unit-files | grep -q "^kiwipanel.service"; then
@@ -196,8 +203,6 @@ function rename_folder() {
 }
 
 
-
-
 # Setting and declaring
 
 kiwipanel_d_start_time=$(date +%s)
@@ -256,11 +261,6 @@ readonly kiwipanel_username=$(generate_random_string)
 readonly kiwipanel_password=$(generatePassword 12)
 
 
-function change_directory() {
-    cd "$1" || return
-}
-
-
 ###################################################################################
 function welcome() {
     ShowLogo
@@ -294,7 +294,6 @@ WEBINOLY="/opt/webinoly/webinoly.conf"
 CYBERPANEL="/usr/local/lscp"
 WPTANGTOC="/etc/wptt/.wptt.conf"
 HOSTVN="var/hostvn/hostvn.conf"
-KIWIPANEL="/home/state/kiwipanel.conf"
 AAPANEL="/www/server/panel"
 
 function check_panel_script() {
@@ -353,24 +352,6 @@ function check_panel_script() {
     if [ -d /usr/local/lsws ] || [ -d /home/lsws ]; then
         PrintRed "Your server has LiteSpeed installed — KiwiPanel currently requires Nginx."
         exit 1
-    fi
-
-    # KiwiPanel already installed
-    if [ -f /home/state/kiwipanel.conf ]; then
-        PrintRed "KiwiPanel is already installed on this server!"
-        # menu
-        echo "1. Start"
-        echo "2. Stop"
-        echo "3. Status"
-        echo "4. Exit"
-        read -rp "Choice: " choice
-        case "$choice" in
-            1) systemctl start kiwipanel ;;
-            2) systemctl stop kiwipanel ;;
-            3) systemctl status kiwipanel ;;
-            4) exit 0 ;;
-            *) echo "Invalid choice"; exit 1 ;;
-        esac
     fi
 
     PrintGreen "No conflicting panels detected. Continuing installation..."
@@ -447,36 +428,79 @@ function check_condition_before_install() {
     check_port_usage 8443
 }
 
-function check_file_availability() {
-    if [ -e "$1" ]; then
-        return 0 # File exists, return true (0)
-    else
-        return 1 # File does not exist, return false (non-zero)
-    fi
-}
 
 #====================================Start Installing KiwiPanel ====================================
-#Creating system user and group
+INSTALL_DIR="/opt/kiwipanel"
+ZIP_URL="https://github.com/kiwipanel/kiwipanel/releases/download/v0.1.0/kiwipanel.zip"
+TMP_ZIP="/tmp/kiwipanel.zip"
+#------------------------------------------------------------Downloading and extracting files
+mkdir -p $INSTALL_DIR
+
+echo "==> Downloading KiwiPanel package"
+if ! curl -L --fail "$ZIP_URL" -o "$TMP_ZIP"; then
+    echo "❌ Failed to download KiwiPanel package. Exiting."
+    exit 1
+fi
+
+# Install zip if needed. Extract the files
+echo "==> Checking unzip installation"
+if ! command -v unzip >/dev/null 2>&1; then
+    echo "Installing unzip package..."
+    apt-get update -y && apt-get install -y unzip
+fi
+
+echo "==> Extracting files"
+unzip -oq "$TMP_ZIP" -d /opt/
+
+#Creating user and group
 echo "==> Creating kiwipanel system user"
 if ! id kiwipanel >/dev/null 2>&1; then
-    useradd --system --create-home \
-        --home-dir /opt/kiwipanel \
+    useradd --system \
+        --no-create-home \
+        --home-dir "$INSTALL_DIR" \
         --shell /usr/sbin/nologin \
         kiwipanel
-    echo "Created user: kiwipanel"
-else
-    echo "User kiwipanel already exists"
 fi
 
-echo "==> Creating ksecure group"
-if ! getent group ksecure >/dev/null 2>&1; then
-    groupadd ksecure
-    echo "Created group: ksecure"
-else
-    echo "Group ksecure already exists"
+echo "==> Creating kiwisecure group"
+if ! getent group kiwisecure >/dev/null 2>&1; then
+    groupadd kiwisecure
 fi
 
-#Create swap====================================
+#------------------------------------------------------------Fixing ownership and permissions (because root created files beforehand
+echo "==> Fixing ownership"
+chown -R kiwipanel:kiwisecure /opt/kiwipanel
+
+echo "==> Setting permissions"
+find /opt/kiwipanel -type d -exec chmod 750 {} \;
+find /opt/kiwipanel -type f -exec chmod 640 {} \;
+
+# Ensure this path is correct based on the zip file structure
+if [ -f "$INSTALL_DIR/bin/kiwipanel" ]; then
+    chmod 750 "$INSTALL_DIR/bin/kiwipanel"
+else
+    echo "Warning: Binary not found at $INSTALL_DIR/bin/kiwipanel"
+fi
+
+#Clean up
+rm -f /tmp/kiwipanel.zip
+#------------------------------------------------------------Installing systemd service file
+echo "==> Installing systemd service"
+
+#Backup existing systemd service file if exists
+if [ -f /etc/systemd/system/kiwipanel.service ]; then
+    cp /etc/systemd/system/kiwipanel.service /etc/systemd/system/kiwipanel.service.bak
+fi
+# Copy systemd service file from extracted ZIP
+cp /opt/kiwipanel/data/kiwipanel.service /etc/systemd/system/kiwipanel.service
+# Make sure permissions are correct
+chmod 644 /etc/systemd/system/kiwipanel.service
+echo "==> Starting KiwiPanel service"
+systemctl daemon-reload
+systemctl enable kiwipanel.service
+systemctl restart kiwipanel.service
+
+#------------------------------------------------------------Create swap
 #Recommendation about the amount of swap:
 #https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/managing_storage_devices/getting-started-with-swap_managing-storage-devices
 function create_swap() {
@@ -548,92 +572,47 @@ function remove_apache2() {
 
 
 function open_port() {
-    local PORT_NUMBER="$1"
-    # Check if iptables is installed
-    if ! command -v iptables &>/dev/null; then
-        echo "Error: iptables not found. This function requires iptables."
-        return 1
+    local PORT_NUMBER="$1"    
+    echo "→ Opening port $PORT_NUMBER ..."
+    # 1) UFW (Ubuntu)
+    if command -v ufw >/dev/null 2>&1; then
+        ufw allow "$PORT_NUMBER"/tcp || true
+        echo "✔ Port opened via UFW"
+        return 0
+    fi
+    # 2) firewalld (CentOS, Alma, Rocky)
+    if command -v firewall-cmd >/dev/null 2>&1; then
+        firewall-cmd --permanent --add-port="$PORT_NUMBER"/tcp || true
+        firewall-cmd --reload || true
+        echo "✔ Port opened via firewalld"
+        return 0
+    fi
+    # 3) iptables (nft or legacy)
+    if command -v iptables >/dev/null 2>&1; then
+        iptables -I INPUT -p tcp --dport "$PORT_NUMBER" -j ACCEPT || true
+
+        # Try persistence methods
+        if command -v netfilter-persistent >/dev/null 2>&1; then
+            netfilter-persistent save || true
+        elif command -v iptables-save >/dev/null 2>&1; then
+            iptables-save >/etc/iptables/rules.v4 2>/dev/null || true
+        fi
+
+        echo "✔ Port opened via iptables"
+        return 0
     fi
 
-    # Check if the function is run as root
-    if [ "$(id -u)" -ne 0 ]; then
-        echo "Error: This function must be run as root. Use sudo."
-        return 1
-    fi
-
-    # Open the specified port
-    iptables -A INPUT -p tcp --dport "$PORT_NUMBER" -j ACCEPT
-
-    # Save the iptables rules to persist across reboots
-    if command -v service &>/dev/null; then
-        service iptables save &>/dev/null # For RHEL/CentOS
-    elif command -v systemctl &>/dev/null; then
-        systemctl restart iptables &>/dev/null # For systemd-based systems
-    else
-        iptables-save >/etc/iptables/rules.v4 # Default fallback (Debian/Ubuntu)
-    fi
-    echo "Port $PORT_NUMBER opened successfully."
+    echo "⚠ No supported firewall found. Port NOT automatically opened."
+    return 1
 }
 
-function remove_file() {
-    cd /usr/bin
-    if check_file_availability "$1"; then
-        sudo rm "$1"
-    fi
-}
+
+
 function move_file() {
     # usr: unix system resources
     sudo mv -v kiwi /usr/bin
     sudo chmod 755 /usr/bin/kiwi
 
-}
-function create_passcode() {
-    # Append the random string to the file
-    echo "passcode:$kiwipanel_passcode" >>"$kiwi_config_file"
-    PrintGreen "Passcode $kiwipanel_passcode is generated and save to kiwipanel.conf"
-}
-function create_root_user() {
-    # Append the username and password to the configuration file
-    echo "username:$kiwipanel_username" >>"$kiwi_config_file"
-    echo "password:$kiwipanel_password" >>"$kiwi_config_file"
-    PrintGreen "Username: $kiwipanel_username and password: $kiwipanel_password are generated and save to kiwipanel.conf"
-}
-function create_database() {
-    folder_path="/home/state/database"
-    file_path="$folder_path/kiwipanel.sqlite"
-
-    # Create the folder if it doesn't exist
-    if [ ! -d "$folder_path" ]; then
-        mkdir -p "$folder_path"
-        chmod 775 "$folder_path"
-        chown -R $(whoami):$(whoami) "$folder_path"
-        echo "Folder created: $folder_path"
-    else
-        # Remove the source folder
-        rm -r "$folder_path" || return 1
-        # Create a new one
-        mkdir -p "$folder_path"
-        chmod 775 "$folder_path"
-        chown -R $(whoami):$(whoami) "$folder_path"
-        echo "Database Folder - recreated: $folder_path"
-    fi
-
-    # Create the file if it doesn't exist
-    if [ ! -e "$file_path" ]; then
-        touch "$file_path"
-        chmod 664 "$file_path" # Adjust permissions to allow all users to read and write
-        chown $(whoami):$(whoami) "$file_path"
-        echo "File created: $file_path"
-    else
-        echo "File already exists: $file_path"
-        chmod 664 "$file_path" # Adjust permissions in case the file already exists
-        chown $(whoami):$(whoami) "$file_path"
-    fi
-}
-function create_state() {
-    create_passcode
-    create_root_user
-    create_database
 }
 
 
@@ -691,8 +670,7 @@ function main() {
     create_swap
     install_base
     remove_apache2    
-    open_port "$KIWIPANEL_PORT"
-    create_state
+    open_port "$KIWIPANEL_PORT"    
     start_systemd
     setup_kiwipanel
     # Using the keyword `trap` to call the function cleanUp on script exit (EXIT signal)
