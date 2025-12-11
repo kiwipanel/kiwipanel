@@ -8,12 +8,12 @@ KiwiPanel is a lightweight control panel designed to help you efficiently manage
 
 **Option 1:**
 ```bash
-curl -sLO https://raw.githubusercontent.com/kiwipanel/kiwipanel/main/install && chmod +x install && sudo bash install
+bash <(wget -qO- https://raw.githubusercontent.com/kiwipanel/kiwipanel/main/install)
 ```
 
 **Option 2:**
 ```bash
-bash <(wget -qO- https://raw.githubusercontent.com/kiwipanel/kiwipanel/main/install)
+curl -sLO https://raw.githubusercontent.com/kiwipanel/kiwipanel/main/install && chmod +x install && sudo bash install
 ```
 
 ##### Port 8443: 

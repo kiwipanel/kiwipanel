@@ -15,7 +15,7 @@ var (
 	once                      sync.Once // create sync.Once primitive)
 	DB                        *gorm.DB
 	database_path_development = "kiwipanel/data/kiwipanel.db"
-	database_path_production  = "/opt/kiwipanel/data/kiwipanel.sqlite"
+	database_path_production  = "/opt/kiwipanel/data/kiwipanel.db"
 	database_path             string
 )
 

@@ -435,11 +435,9 @@ function install_base() {
 #Check port https://ping.eu/port-chk/check_port_usage() {
 check_port_usage() {
     local port="$1"
-
     PrintGreen "Checking port $port..."
 
-    # Use ss (available everywhere by default)
-    if ss -ltn "( sport = :$port )" | grep -q ":$port"; then
+    if ss -tuln | awk '{print $5}' | grep -q ":$port$"; then
         echo "❌ Port $port is already in use. KiwiPanel needs this port."
         return 1
     fi
@@ -489,12 +487,11 @@ function main() {
     welcome
     check_condition_before_install
     create_swap    
-    install_base    
-    open_port "$KIWIPANEL_PORT"    
+    install_base            
     installkiwipanel
     successMessage        
     # Using the keyword `trap` to call the function cleanUp on script exit (EXIT signal)
-    #trap clean_up EXIT
+    trap clean_up EXIT
 }
 
 

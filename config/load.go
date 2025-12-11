@@ -8,7 +8,7 @@ import (
 )
 
 func Load(path string, mode string) (*Config, error) {
-	if path == "production" {
+	if mode == "production" {
 		path = ProductionConfigPath
 	} else {
 		path = DevelopmentConfigPath
