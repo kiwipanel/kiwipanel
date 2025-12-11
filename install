@@ -289,22 +289,24 @@ function check_os() {
 }
 
 function check_port_usage() {
-    PrintGreen "Checking the port 8443..."
-    sleep 2
-    local port_number=$1
-    # Check if lsof is installed [Will be surely installed]
-    if ! [ -x "$(command -v lsof)" ]; then
-        echo 'Error: lsof is not installed. Please install lsof to use this script.' >&2
+    local port_number="$1"
+    PrintGreen "Checking port $port_number..."
+    # Check dependency
+    if ! command -v lsof >/dev/null 2>&1; then
+        echo "Error: lsof is not installed. Please install it." >&2
         return 1
     fi
-    # Check if the port is in use
-    if lsof -i :$port_number >/dev/null 2>&1; then
-        echo "Port $port_number is in use. You might check your compute as KiwiPanel will run on the port 8443."
-        exit 1
+
+    # Check port usage
+    if lsof -i :"$port_number" >/dev/null 2>&1; then
+        echo "❌ Port $port_number is already in use."
+        echo "KiwiPanel requires port $port_number. Please free the port and try again."
+        return 1      # do NOT exit, let installer decide
     else
-        echo "Port $port_number is not in use. You are good to go!"
+        echo "✅ Port $port_number is free. Continuing..."
     fi
 }
+
 
 function check_condition_before_install() {
     PrintGreen "Evaluating your VPS before installing KiwiPanel....."
