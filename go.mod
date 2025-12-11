@@ -7,9 +7,9 @@ require (
 	github.com/glebarez/sqlite v1.10.0
 	github.com/gorilla/securecookie v1.1.2
 	github.com/gorilla/sessions v1.2.2
-	github.com/joho/godotenv v1.5.1
 	github.com/labstack/echo-contrib v0.15.0
 	github.com/labstack/echo/v4 v4.13.4
+	github.com/pelletier/go-toml/v2 v2.2.4
 	github.com/shirou/gopsutil/v3 v3.23.12
 	github.com/spf13/cobra v1.8.0
 	gorm.io/gorm v1.25.5

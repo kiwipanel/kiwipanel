@@ -23,36 +23,6 @@ export LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8
 # Stop on error 
 set -e
 
-# Check for sudo/root privileges######################################
-if [ "$(id -u)" -ne 0 ]; then
-    PrintRed "❌ You should install KiwiPanel as root or using sudo command."
-    exit 1
-fi
-
-function generatePassword {
-    LENGTH="16"
-    if [ ! -z "$1" ]; then
-        LENGTH="$1"
-    fi
-    echo $(openssl rand -base64 64 | tr -dc a-zA-Z0-9=+ | fold -w ${LENGTH} | head -1)
-}
-
-
-function generate_random_string() {
-    cat /dev/urandom | tr -dc 'a-z0-9' | head -c 9
-}
-
-# Configuration########################################################
-readonly KIWIPANEL_PORT=8443
-KIWI_VERSION="latest"
-INSTALL_DIR="/opt/kiwipanel"
-ZIP_URL="https://github.com/kiwipanel/kiwipanel/releases/download/v0.1.0/kiwipanel.zip"
-TMP_ZIP="/tmp/kiwipanel.zip"
-readonly kiwipanel_passcode=$(generate_random_string)
-readonly kiwipanel_username=$(generate_random_string)
-readonly kiwipanel_password=$(generatePassword 12)
-
-
 # Utilities ###########################################################
 function PrintGreen() {
     local GREEN='\033[0;32m'
@@ -75,6 +45,36 @@ function PrintWarning() {
     local content="${1}"
     printf "${YELLOW_BROWN}Warning: ${content}${NC}\n"
 }
+
+function generatePassword {
+    LENGTH="16"
+    if [ ! -z "$1" ]; then
+        LENGTH="$1"
+    fi
+    echo $(openssl rand -base64 64 | tr -dc a-zA-Z0-9=+ | fold -w ${LENGTH} | head -1)
+}
+
+function generate_random_string() {
+    cat /dev/urandom | tr -dc 'a-z0-9' | head -c 9
+}
+
+# Check for sudo/root privileges######################################
+if [ "$(id -u)" -ne 0 ]; then
+    PrintRed "❌ You should install KiwiPanel as root or using sudo command."
+    exit 1
+fi
+
+
+# Configuration########################################################
+readonly KIWIPANEL_PORT=8443
+KIWI_VERSION="latest"
+INSTALL_DIR="/opt/kiwipanel"
+ZIP_URL="https://github.com/kiwipanel/kiwipanel/releases/download/v0.1.0/kiwipanel.zip"
+TMP_ZIP="/tmp/kiwipanel.zip"
+readonly kiwipanel_passcode=$(generate_random_string)
+readonly kiwipanel_username=$(generate_random_string)
+readonly kiwipanel_password=$(generatePassword 12)
+
 
 # Welcome########################################################
 function ShowLogo {
@@ -120,7 +120,7 @@ readonly kernel_version=$(uname -r)
 readonly distro_version=$(echo $(lsb_release -c | cut -d':' -f 2))
 
 #Reference: https://www.cloudron.io/get.html
-readonly MINIMUM_DISK_SIZE_GB="10"
+readonly MINIMUM_DISK_SIZE_GB="5"
 readonly MINIMUM_MEMORY="420" #on Amazon lightsail 423MB,
 readonly curl="curl --fail --connect-timeout 20 --retry 10 --retry-delay 2 --max-time 2400"
 readonly rootfs_type=$(LC_ALL=C df --output=fstype / | tail -n1)
@@ -142,10 +142,9 @@ if [[ "${physical_memory}" -lt "${MINIMUM_MEMORY}" ]]; then
 fi
 
 if [[ "${disk_size_gb}" -lt "${MINIMUM_DISK_SIZE_GB}" ]]; then
-    echo "Error: KiwiPanel requires atleast 10GB disk space (Disk space on / is ${disk_size_gb}GB)"
+    echo "Error: KiwiPanel requires atleast 5GB disk space (Disk space on / is ${disk_size_gb}GB)"
     exit 1
 fi
-
 
 
 
@@ -238,7 +237,7 @@ function check_panel_script() {
 
     # LiteSpeed (OLS or Enterprise)
     if [ -d /usr/local/lsws ] || [ -d /home/lsws ]; then
-        PrintRed "Your server has LiteSpeed installed — KiwiPanel currently requires Nginx."
+        PrintRed "Your server has LiteSpeed installed — KiwiPanel can only be installed on a fresh VPS."
         exit 1
     fi
 
@@ -450,7 +449,7 @@ function install_base() {
     fi
 }
 
-
+#Check port https://ping.eu/port-chk/
 function open_port() {
     local PORT_NUMBER="$1"    
     echo "→ Opening port $PORT_NUMBER ..."
@@ -484,15 +483,6 @@ function open_port() {
 
     echo "⚠ No supported firewall found. Port NOT automatically opened."
     return 1
-}
-
-
-
-function move_file() {
-    # usr: unix system resources
-    sudo mv -v kiwi /usr/bin
-    sudo chmod 755 /usr/bin/kiwi
-
 }
 
 

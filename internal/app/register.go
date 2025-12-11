@@ -1,25 +1,19 @@
 package app
 
 import (
-	"fmt"
-
 	"github.com/kiwipanel/kiwipanel/config"
 	"github.com/kiwipanel/kiwipanel/pkg/database"
-	"github.com/kiwipanel/kiwipanel/pkg/routing"
 	"github.com/kiwipanel/kiwipanel/pkg/sessionstore"
 )
 
-var app config.AppConfig
-var r = routing.GetRoute()
+var appConfig config.AppConfig
 
-func Register(mode string) {
-	env := config.NewENV()
-	app.UseCache = true
+func Register(environment string) {
 
-	app.KIWIPANEL_MODE = mode
-	fmt.Println("env loaded in Register.com: ", env)
+	appConfig.UseCache = true
+	appConfig.KIWIPANEL_MODE = environment
 
-	routing.Register(&app)
+	RegisterRoutes(&appConfig)
 	sessionstore.Register(r)
-	database.Connect(&app)
+	database.Connect(&appConfig)
 }

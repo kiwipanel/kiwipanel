@@ -1,0 +1,110 @@
+######################################################################
+#                          KiwiPanel Config                          #
+#                Production-ready panel.toml template                #
+######################################################################
+
+#---------------------------------------------------------------------
+# BASIC PANEL SETTINGS
+#---------------------------------------------------------------------
+[panel]
+app_name      = "KiwiPanel"
+environment   = "production"        # production | development
+debug         = false               # set true for verbose logging
+
+bind_addr     = "0.0.0.0"
+bind_port     = 8443                # KiwiPanel web UI port
+
+log_dir       = "/opt/kiwipanel/logs"
+data_dir      = "/opt/kiwipanel/data"
+
+#---------------------------------------------------------------------
+# SECURITY CONFIGURATION
+#---------------------------------------------------------------------
+[security]
+jwt_secret    = "CHANGE_ME"         # will be auto-encrypted after first startup
+password_pepper = "CHANGE_ME_2"     # extra protection for hashing
+
+allow_root_login = false            # blocks root login to panel
+rate_limit_per_minute = 60          # DDOS/bruteforce protection
+
+#---------------------------------------------------------------------
+# DATABASE CONFIG
+#---------------------------------------------------------------------
+[database]
+type     = "sqlite"                 # sqlite | mysql | postgres
+path     = "/opt/kiwipanel/data/kiwipanel.db"
+
+# MySQL/Postgres example:
+# host     = "127.0.0.1"
+# port     = 3306
+# name     = "kiwipanel"
+# user     = "kiwi"
+# password = "CHANGE_ME"            # auto-encrypted
+
+#---------------------------------------------------------------------
+# WEB SERVER ENGINE: NGINX / OPENLITESPEED
+#---------------------------------------------------------------------
+[webserver]
+engine = "nginx"                    # nginx | lsws
+
+# Nginx settings
+nginx_bin      = "/usr/sbin/nginx"
+nginx_conf     = "/etc/nginx/nginx.conf"
+nginx_sites    = "/etc/nginx/sites-enabled"
+
+# OpenLiteSpeed settings
+lsws_bin       = "/usr/local/lsws/bin/lswsctrl"
+lsws_conf      = "/usr/local/lsws/conf/httpd_config.conf"
+lsws_vhosts    = "/usr/local/lsws/conf/vhosts"
+
+#---------------------------------------------------------------------
+# WEBSITE CONFIGURATION
+#---------------------------------------------------------------------
+[sites]
+root_dir = "/home"                  # FastPanel style user isolation
+default_php_version = "php82"
+
+#---------------------------------------------------------------------
+# PHP SETTINGS
+#---------------------------------------------------------------------
+[php]
+versions = ["php80", "php81", "php82"]
+
+# Each will load template from templates/php/phpXX.tmpl
+
+#---------------------------------------------------------------------
+# SSL SETTINGS
+#---------------------------------------------------------------------
+[ssl]
+auto_renew           = true
+letsencrypt_bin      = "/usr/bin/certbot"
+letsencrypt_email    = "admin@example.com"
+default_key_type     = "ecdsa"      # ecdsa | rsa
+
+#---------------------------------------------------------------------
+# BACKUP
+#---------------------------------------------------------------------
+[backup]
+enabled       = true
+path          = "/opt/kiwipanel/backups"
+retention_days = 7
+
+#---------------------------------------------------------------------
+# SYSTEM
+#---------------------------------------------------------------------
+[system]
+firewall_cmd = "ufw"                # ufw | firewalld | iptables
+timezone     = "Asia/Ho_Chi_Minh"
+hostname_cmd = "/usr/bin/hostnamectl"
+
+#---------------------------------------------------------------------
+# TEMPLATE PATHS
+#---------------------------------------------------------------------
+[templates]
+nginx_site   = "/opt/kiwipanel/templates/nginx/site.tmpl"
+lsws_vhost   = "/opt/kiwipanel/templates/lsws/vhost.tmpl"
+php_ini      = "/opt/kiwipanel/templates/php/php.ini.tmpl"
+
+#---------------------------------------------------------------------
+# END OF FILE
+#---------------------------------------------------------------------

@@ -2,95 +2,53 @@ package config
 
 import (
 	"fmt"
-	"log"
 	"os"
-	"strconv"
-	"time"
 
-	"github.com/joho/godotenv"
+	"github.com/pelletier/go-toml/v2"
 )
 
-func NewConfigServer() *Config {
-	once.Do(func() {
-		err := godotenv.Load(".env")
-		if err != nil {
-			log.Fatal("Error loading .env file")
-		}
-
-		host := os.Getenv("SERVER_HOST")
-		port, err := strconv.Atoi(os.Getenv("SERVER_PORT"))
-
-		if err != nil {
-			panic("wrong server port (check your .env)")
-		}
-		readTimeout, err := strconv.Atoi(os.Getenv("SERVER_READ_TIMEOUT"))
-		if err != nil {
-			panic("wrong server read timeout (check your .env)")
-		}
-
-		writeTimeout, err := strconv.Atoi(os.Getenv("SERVER_WRITE_TIMEOUT"))
-		if err != nil {
-			panic("wrong server write timeout (check your .env)")
-		}
-		idleTimeout, err := strconv.Atoi(os.Getenv("SERVER_IDLE_TIMEOUT"))
-		if err != nil {
-			panic("wrong server idle timeout (check your .env)")
-		}
-		instance = &Config{
-			Server: &serverConfig{
-				Addr:         fmt.Sprintf("%s:%d", host, port),
-				ReadTimeout:  time.Duration(readTimeout) * time.Second,
-				WriteTimeout: time.Duration(writeTimeout) * time.Second,
-				IdleTimeout:  time.Duration(idleTimeout) * time.Second,
-			},
-		}
-	})
-
-	return instance
+func Load(path string, mode string) (*Config, error) {
+	if path == "production" {
+		path = ProductionConfigPath
+	} else {
+		path = DevelopmentConfigPath
+	}
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("cannot read config: %w", err)
+	}
+	cfg := &Config{}
+	if err := toml.Unmarshal(raw, cfg); err != nil {
+		return nil, fmt.Errorf("TOML decode failed: %w", err)
+	}
+	applyDefaults(cfg)
+	return cfg, nil
 }
 
-func NewENV() *ENV {
-	//Uncomment and use the following file in case of production or on the Linux environment.
-	//envfile := "/home/scaffolding/" + ".env"
-
-	dir, err := os.Getwd()
-	if err != nil {
-		log.Fatal("Cannot find the folder - Inside load.go:  ", err)
+func applyDefaults(c *Config) {
+	// Server
+	if c.Server.Bind == "" {
+		c.Server.Bind = "0.0.0.0"
+	}
+	if c.Server.Port == 0 {
+		c.Server.Port = 8443
+	}
+	// Logging
+	if c.Log.Level == "" {
+		c.Log.Level = "info"
+	}
+	if c.Log.File == "" {
+		c.Log.File = "/var/log/kiwipanel.log"
 	}
 
-	envfile := dir + "/.env"
-	err = godotenv.Load(envfile)
-	if err != nil {
-		log.Fatal("Error loading .env file: ", err)
+	// Paths
+	if c.Paths.DataDir == "" {
+		c.Paths.DataDir = "/opt/kiwipanel/data"
 	}
-
-	host := os.Getenv("SERVER_HOST")
-	update := os.Getenv("UPDATE")
-	boolUpdate, err := strconv.ParseBool(update)
-	if err != nil {
-		log.Fatal(err)
-		fmt.Println("Cannot convert the string into env. Check your .env or the type in your ENV struct")
+	if c.Paths.TempDir == "" {
+		c.Paths.TempDir = "/opt/kiwipanel/tmp"
 	}
-
-	demo := os.Getenv("DEMO")
-	boolDemo, err := strconv.ParseBool(demo)
-	if err != nil {
-		log.Fatal(err)
-		fmt.Println("Cannot convert the string into env. Check your .env or the type in your ENV struct")
+	if c.Paths.BinaryPath == "" {
+		c.Paths.BinaryPath = "/opt/kiwipanel/bin/kiwipanel"
 	}
-
-	version, err := strconv.ParseFloat(os.Getenv("VERSION"), 64)
-	if err != nil {
-		fmt.Println("Error", err)
-		panic("wrong VERSION (check your .env)")
-	}
-
-	env = &ENV{
-		HOST:    host,
-		VERSION: version,
-		UPDATE:  boolUpdate,
-		DEMO:    boolDemo,
-	}
-
-	return env
 }

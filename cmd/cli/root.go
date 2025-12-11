@@ -12,7 +12,7 @@ var rootCmd = &cobra.Command{
 	Short: "Kiwipanel control CLI",
 }
 
-func Boot() {
+func Root() {
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)

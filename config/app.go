@@ -2,9 +2,15 @@ package config
 
 import (
 	"log"
+	"sync"
 	"text/template"
 
 	"gorm.io/gorm"
+)
+
+var (
+	once sync.Once // create sync.Once primitive
+	mode bool
 )
 
 type AppConfig struct {
