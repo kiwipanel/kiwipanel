@@ -288,25 +288,6 @@ function check_os() {
     fi
 }
 
-function check_port_usage() {
-    local port_number="$1"
-    PrintGreen "Checking port $port_number..."
-    # Check dependency
-    if ! command -v lsof >/dev/null 2>&1; then
-        echo "Error: lsof is not installed. Please install it." >&2
-        return 1
-    fi
-
-    # Check port usage
-    if lsof -i :"$port_number" >/dev/null 2>&1; then
-        echo "❌ Port $port_number is already in use."
-        echo "KiwiPanel requires port $port_number. Please free the port and try again."
-        return 1      # do NOT exit, let installer decide
-    else
-        echo "✅ Port $port_number is free. Continuing..."
-    fi
-}
-
 
 function check_condition_before_install() {
     PrintGreen "Evaluating your VPS before installing KiwiPanel....."
@@ -451,42 +432,20 @@ function install_base() {
     fi
 }
 
-#Check port https://ping.eu/port-chk/
-function open_port() {
-    local PORT_NUMBER="$1"    
-    echo "→ Opening port $PORT_NUMBER ..."
-    # 1) UFW (Ubuntu)
-    if command -v ufw >/dev/null 2>&1; then
-        ufw allow "$PORT_NUMBER"/tcp || true
-        echo "✔ Port opened via UFW"
-        return 0
-    fi
-    # 2) firewalld (CentOS, Alma, Rocky)
-    if command -v firewall-cmd >/dev/null 2>&1; then
-        firewall-cmd --permanent --add-port="$PORT_NUMBER"/tcp || true
-        firewall-cmd --reload || true
-        echo "✔ Port opened via firewalld"
-        return 0
-    fi
-    # 3) iptables (nft or legacy)
-    if command -v iptables >/dev/null 2>&1; then
-        iptables -I INPUT -p tcp --dport "$PORT_NUMBER" -j ACCEPT || true
+#Check port https://ping.eu/port-chk/check_port_usage() {
+check_port_usage() {
+    local port="$1"
 
-        # Try persistence methods
-        if command -v netfilter-persistent >/dev/null 2>&1; then
-            netfilter-persistent save || true
-        elif command -v iptables-save >/dev/null 2>&1; then
-            iptables-save >/etc/iptables/rules.v4 2>/dev/null || true
-        fi
+    PrintGreen "Checking port $port..."
 
-        echo "✔ Port opened via iptables"
-        return 0
+    # Use ss (available everywhere by default)
+    if ss -ltn "( sport = :$port )" | grep -q ":$port"; then
+        echo "❌ Port $port is already in use. KiwiPanel needs this port."
+        return 1
     fi
 
-    echo "⚠ No supported firewall found. Port NOT automatically opened."
-    return 1
+    echo "✅ Port $port is free."
 }
-
 
 
 function successMessage() {    
