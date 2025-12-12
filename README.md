@@ -37,6 +37,7 @@ On some cloud service providers such as Amazon Lightsail or Oracle, you have to 
 
 
 ### References
+- https://docs.openlitespeed.org/installation/script/
 - https://github.com/hestiacp/hestiacp
 - https://github.com/ConvoyPanel/panel
 - https://github.com/wptangtoc/wptangtoc-ols/

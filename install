@@ -304,19 +304,21 @@ prepare_directories() {
     mkdir -p "$INSTALL_DIR"
 }
 
+show_version(){
+    LATEST=$(curl -s https://raw.githubusercontent.com/kiwipanel/kiwipanel/refs/heads/main/version.json)
+    VERSION=$(echo "$LATEST" | jq -r '.version')
+    URL=$(echo "$LATEST" | jq -r '.download_url')
+    NOTES=$(echo "$LATEST" | jq -r '.notes')
+    echo "Latest Version: $VERSION"    
+    echo "Note: $NOTES"
+    sleep 2
+}
+
 download_package() {
     echo "==> Downloading KiwiPanel package"
     if ! curl -L --fail "$ZIP_URL" -o "$TMP_ZIP"; then
         echo "❌ Failed to download KiwiPanel package. Exiting."
         exit 1
-    fi
-}
-
-# Install zip if needed. Extract the files
-install_unzip_if_needed() {
-    if ! command -v unzip >/dev/null; then
-        echo "==> Installing unzip"
-        apt-get update -y && apt-get install -y unzip
     fi
 }
 
@@ -334,7 +336,6 @@ create_users_and_groups() {
             --shell /usr/sbin/nologin \
             kiwipanel
     fi
-
     echo "==> Creating kiwisecure group"
     getent group kiwisecure >/dev/null || groupadd kiwisecure
 }
@@ -353,6 +354,17 @@ fix_permissions() {
     else
         echo "⚠️ Warning: binary not found at $INSTALL_DIR/bin/kiwipanel"
     fi
+}
+
+function linkbinary(){
+    if [ ! -f "$INSTALL_DIR/bin/kiwipanel" ]; then
+        PrintRed "Binary not found at $INSTALL_DIR/bin/kiwipanel"
+        exit 1
+    fi
+
+    chmod +x "$INSTALL_DIR/bin/kiwipanel"
+    ln -sf "$INSTALL_DIR/bin/kiwipanel" /usr/local/bin/kiwipanel
+    PrintGreen "Linked kiwipanel → /usr/local/bin/kiwipanel"
 }
 
 #------------------------------------------------------------Installing systemd service file
@@ -462,25 +474,16 @@ function successMessage() {
     "
 }
 
-clean_up() {
-    #Clean the history of the commands that have been used during the current shell session.
-    history -c
-    # Clean the local repository of retrieved package files
-    apt clean
-    #Remove the script itself
-    rm $0
-    PrintGreen "Cleaning up is done!"
-}
 
 function installkiwipanel() {
     prepare_directories
-    download_package
-    install_unzip_if_needed
+    show_version
+    download_package    
     extract_package
     create_users_and_groups
     fix_permissions
-    install_systemd_service
-    cleanup    
+    linkbinary
+    install_systemd_service          
 }
 
 function main() {
@@ -491,7 +494,7 @@ function main() {
     installkiwipanel
     successMessage        
     # Using the keyword `trap` to call the function cleanUp on script exit (EXIT signal)
-    trap clean_up EXIT
+    #trap clean_up EXIT
 }
 
 
