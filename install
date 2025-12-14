@@ -54,8 +54,8 @@ function generatePassword {
     echo $(openssl rand -base64 64 | tr -dc a-zA-Z0-9=+ | fold -w ${LENGTH} | head -1)
 }
 
-function generate_random_string() {
-    cat /dev/urandom | tr -dc 'a-z0-9' | head -c 9
+generate_random_string() {
+    tr -dc 'a-z0-9' < /dev/urandom | head -c 9
 }
 
 # Check for sudo/root privileges######################################
@@ -64,18 +64,13 @@ if [ "$(id -u)" -ne 0 ]; then
     exit 1
 fi
 
-
 # Configuration########################################################
 readonly KIWIPANEL_PORT=8443
+kiwipanel_passcode=""
 KIWI_VERSION="latest"
 INSTALL_DIR="/opt/kiwipanel"
 ZIP_URL="https://github.com/kiwipanel/kiwipanel/releases/download/v0.1.0/kiwipanel.zip"
 TMP_ZIP="/tmp/kiwipanel.zip"
-readonly kiwipanel_passcode=$(generate_random_string)
-readonly kiwipanel_username=$(generate_random_string)
-readonly kiwipanel_password=$(generatePassword 12)
-
-
 # Welcome########################################################
 function ShowLogo {
     local kiwipanel_text=$(
@@ -111,7 +106,7 @@ kiwipanel_d_start_time=$(date +%s)
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 NC='\033[0m' #NC: Not color: reset color to the default
-IPADDRESS=$(curl -s -L -sk --connect-timeout 10 --retry 3 --retry-delay 0 http://cpanel.net/showip.cgi)
+IPADDRESS=$(curl -s --connect-timeout 5 http://cpanel.net/showip.cgi || hostname -I | awk '{print $1}')
 readonly DIR=$(pwd)
 readonly HOSTNAME=$(hostname)
 # Check the current distro and the kernel
@@ -368,8 +363,7 @@ function linkbinary(){
 }
 
 #------------------------------------------------------------Installing systemd service file
-
-install_systemd_service() {
+function install_systemd_service() {
     echo "==> Installing systemd service"
     if [ -f /etc/systemd/system/kiwipanel.service ]; then
         cp /etc/systemd/system/kiwipanel.service \
@@ -383,6 +377,24 @@ install_systemd_service() {
     systemctl daemon-reload
     systemctl enable kiwipanel.service
     systemctl restart kiwipanel.service
+}
+
+#------------------------------------------------------------Create passcode to protect login page
+function generate_the_passcode() {
+    local META_DIR="/opt/kiwipanel/meta"
+    local PASSCODE_FILE="$META_DIR/passcode"
+    mkdir -p "$META_DIR"
+    if [[ -f "$PASSCODE_FILE" ]]; then
+        kiwipanel_passcode=$(tr -d '\n' < "$PASSCODE_FILE")
+        echo "[INFO] Passcode loaded."
+        return 0
+    fi
+    kiwipanel_passcode=$(generate_random_string)
+    printf '%s\n' "$kiwipanel_passcode" > "$PASSCODE_FILE"
+    chown root:kiwipanel "$PASSCODE_FILE"
+    chmod 640 "$PASSCODE_FILE"
+
+    echo "[INFO] Passcode generated."
 }
 
 cleanup() {
@@ -474,7 +486,6 @@ function successMessage() {
     "
 }
 
-
 function installkiwipanel() {
     prepare_directories
     show_version
@@ -482,8 +493,9 @@ function installkiwipanel() {
     extract_package
     create_users_and_groups
     fix_permissions
-    linkbinary
-    install_systemd_service          
+    linkbinary             
+    generate_the_passcode 
+    install_systemd_service
 }
 
 function main() {
