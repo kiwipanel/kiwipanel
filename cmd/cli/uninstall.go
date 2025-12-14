@@ -3,10 +3,8 @@ package cli
 import (
 	"fmt"
 	"os"
-	"os/exec"
-	"strings"
-	"time"
 
+	"github.com/kiwipanel/kiwipanel/pkg/helpers"
 	"github.com/spf13/cobra"
 )
 
@@ -19,7 +17,6 @@ func init() {
 		false,
 		"Keep KiwiPanel data under /opt/kiwipanel",
 	)
-
 	rootCmd.AddCommand(uninstall)
 }
 
@@ -27,54 +24,42 @@ var uninstall = &cobra.Command{
 	Use:   "uninstall",
 	Short: "Uninstall KiwiPanel",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		fmt.Println("Uninstall KiwiPanel...")
+		fmt.Println("Start uninstalling KiwiPanel...")
 
 		if os.Geteuid() != 0 {
-			return fmt.Errorf("must be run as root")
+			return fmt.Errorf("Must be helpers.Run as root")
 		}
-
 		uninstallCmd()
 		return nil
 	},
 }
 
 func uninstallCmd() {
-	// Try to stop via systemd first
-	run("systemctl", "stop", "kiwipanel")
-	run("systemctl", "disable", "kiwipanel")
+	// Stop and disable service
+	helpers.Run("systemctl", "stop", "kiwipanel")
+	helpers.Run("systemctl", "disable", "kiwipanel")
 
-	// Force kill any remaining kiwipanel processes
-	run("pkill", "-9", "kiwipanel")
+	// Remove systemd unit
+	_ = os.Remove("/etc/systemd/system/kiwipanel.service")
+	helpers.Run("systemctl", "daemon-reload")
 
-	// Give it a moment to terminate
-	time.Sleep(1 * time.Second)
+	// Remove binary (safe even while helpers.Running)
+	_ = os.RemoveAll("/usr/local/bin/kiwipanel")
 
-	// Remove the systemd service file
-	os.Remove("/etc/systemd/system/kiwipanel.service")
-	run("systemctl", "daemon-reload")
-
-	// Now remove the binary
-	os.Remove("/usr/local/bin/kiwipanel")
-
+	// Remove data
 	if !keepData {
-		os.RemoveAll("/opt/kiwipanel")
-		os.RemoveAll("/var/log/kiwipanel")
+		_ = os.RemoveAll("/opt/kiwipanel")
+		_ = os.RemoveAll("/var/log/kiwipanel")
 	}
 
-	run("userdel", "kiwipanel")
-	run("groupdel", "kiwisecure")
+	// Remove user/group
+	helpers.Run("userdel", "kiwipanel")
+	helpers.Run("groupdel", "kiwisecure")
 
-	fmt.Println("✅ KiwiPanel successfully uninstalled.")
-}
-
-func run(name string, args ...string) {
-	fmt.Printf("→ %s %s\n", name, strings.Join(args, " "))
-
-	cmd := exec.Command(name, args...)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	if err := cmd.Run(); err != nil {
-		fmt.Printf("⚠️  ignored error: %v\n", err)
+	if helpers.IsProcessRunning("kiwipanel") {
+		fmt.Println("⚠️  KiwiPanel process still helpers.Running!")
+	} else {
+		fmt.Println("✅ No KiwiPanel process found.")
+		fmt.Println("✅ KiwiPanel successfully uninstalled.")
 	}
 }

@@ -2,6 +2,7 @@ package app
 
 import (
 	"fmt"
+	"net/http"
 
 	"github.com/kiwipanel/kiwipanel/config"
 )
@@ -15,9 +16,9 @@ func Boot(environment string) {
 	fmt.Println("KiwiPanel listening on", cfg.Server.Port)
 	fmt.Println("KiwiPanel listening on", cfg)
 
-	Register(environment)
+	r := Register(environment)
 	Migrate()
-	Setup()
 	port := fmt.Sprintf(":%d", cfg.Server.Port)
-	r.Logger.Fatal(r.Start(port))
+	http.ListenAndServe(port, r)
+
 }

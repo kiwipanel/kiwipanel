@@ -20,14 +20,10 @@ curl -sLO https://raw.githubusercontent.com/kiwipanel/kiwipanel/main/install && 
 On some cloud service providers such as Amazon Lightsail or Oracle, you have to manually open the port 8443 inside their control dashboards.
 
 ### Dependencies
-- https://github.com/bitfield/script
-- https://github.com/gorilla/securecookie
-- https://github.com/gorilla/sessions
-- https://github.com/joho/godotenv
-- https://github.com/labstack/echo-contrib
-- https://github.com/labstack/echo/
+- https://github.com/go-chi/chi
 - https://github.com/shirou/gopsutil/
 - https://github.com/spf13/cobra
+- https://github.com/bitfield/script
 - https://gorm.io/driver/sqlite
 - https://gorm.io/gorm
 - https://github.com/ajaxorg/ace

@@ -6,10 +6,9 @@ import (
 	"net/http"
 
 	"github.com/kiwipanel/kiwipanel/internal/modules/app/admin/models"
-	"github.com/labstack/echo/v4"
 )
 
-func (app *Controller) AdminHompage(c echo.Context) error {
+func (app *Controller) AdminHompage(w http.ResponseWriter, r *http.Request) {
 
 	randomNumber := rand.Intn(100) + 1
 
@@ -17,6 +16,6 @@ func (app *Controller) AdminHompage(c echo.Context) error {
 
 	models.Create(app.config.DB, "hello", randomNumber)
 
-	return c.String(http.StatusOK, "hello admin")
+	w.Write([]byte("hi admin"))
 
 }

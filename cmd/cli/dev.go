@@ -3,10 +3,9 @@ package cli
 import (
 	"fmt"
 	"os"
-	"path/filepath"
-	"strings"
 
 	"github.com/kiwipanel/kiwipanel/internal/app"
+	"github.com/kiwipanel/kiwipanel/pkg/helpers"
 	"github.com/spf13/cobra"
 )
 
@@ -19,7 +18,7 @@ var dev = &cobra.Command{
 	Short: "Run development server",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		fmt.Println("Running development server...")
-		if isInstalled() {
+		if helpers.IsInstalled() {
 			fmt.Println("❌ Dev mode is disabled on installed servers.")
 			fmt.Println("👉 Use `kiwipanel start` instead.")
 			os.Exit(1)
@@ -27,15 +26,4 @@ var dev = &cobra.Command{
 		app.Boot("development")
 		return nil
 	},
-}
-
-func isInstalled() bool {
-	// method 1: check config exists
-	if _, err := os.Stat("/opt/kiwipanel/config/kiwipanel.toml"); err == nil {
-		return true
-	}
-	// method 2: fallback to binary location
-	exe, _ := os.Executable()
-	real, _ := filepath.EvalSymlinks(exe)
-	return strings.HasPrefix(real, "/opt/kiwipanel")
 }

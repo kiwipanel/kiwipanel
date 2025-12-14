@@ -1,15 +1,13 @@
 package routes
 
 import (
+	"github.com/go-chi/chi/v5"
 	"github.com/kiwipanel/kiwipanel/internal/modules/app/home/controllers"
-	"github.com/labstack/echo/v4"
 )
 
-func PublicRoutes(r *echo.Echo) {
+func PublicRoutes(r *chi.Mux) {
 	controller := controllers.New()
-	r.GET("/", controller.Homepage)
-	r.GET("/:passcode", controller.Homepage)
-	r.GET("/hello", controller.Hello)
-	r.POST("/home/login", controller.Login)
+	r.Get("/", controller.Homepage)
+	r.Get("/hello", controller.Homepage)
 
 }
