@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 )
@@ -38,11 +39,21 @@ var uninstall = &cobra.Command{
 }
 
 func uninstallCmd() {
-	run("systemctl stop kiwipanel")
-	run("systemctl disable kiwipanel")
-	os.Remove("/etc/systemd/system/kiwipanel.service")
-	run("systemctl daemon-reload")
+	// Try to stop via systemd first
+	run("systemctl", "stop", "kiwipanel")
+	run("systemctl", "disable", "kiwipanel")
 
+	// Force kill any remaining kiwipanel processes
+	run("pkill", "-9", "kiwipanel")
+
+	// Give it a moment to terminate
+	time.Sleep(1 * time.Second)
+
+	// Remove the systemd service file
+	os.Remove("/etc/systemd/system/kiwipanel.service")
+	run("systemctl", "daemon-reload")
+
+	// Now remove the binary
 	os.Remove("/usr/local/bin/kiwipanel")
 
 	if !keepData {
@@ -50,23 +61,20 @@ func uninstallCmd() {
 		os.RemoveAll("/var/log/kiwipanel")
 	}
 
-	run("userdel kiwipanel")
-	run("groupdel kiwisecure")
+	run("userdel", "kiwipanel")
+	run("groupdel", "kiwisecure")
 
 	fmt.Println("✅ KiwiPanel successfully uninstalled.")
 }
 
-func run(command string) error {
-	fmt.Printf("→ %s\n", command)
+func run(name string, args ...string) {
+	fmt.Printf("→ %s %s\n", name, strings.Join(args, " "))
 
-	parts := strings.Fields(command)
-	cmd := exec.Command(parts[0], parts[1:]...)
+	cmd := exec.Command(name, args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("command failed: %s: %w", command, err)
+		fmt.Printf("⚠️  ignored error: %v\n", err)
 	}
-
-	return nil
 }

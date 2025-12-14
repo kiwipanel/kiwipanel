@@ -88,14 +88,13 @@ EOF
     echo ""
 }
 
-
 #Check if kiwipanel (CLI) has been installed. Stop if yes.
 if systemctl list-unit-files | grep -q "^kiwipanel.service"; then
     PrintRed "KiwiPanel service has already been installed. Abort installation."
     PrintRed "Please install on a fresh compute or manually remove the existing service."
     exit 1
 else
-    PrintGreen "KiwiPanel service does not exist. You are good to go."
+    PrintGreen "Thanks for choosing KiwiPanel... Starting installation..."
 fi
 
 # Detect the system's architecture
@@ -436,13 +435,13 @@ function UpdateUbuntu() {
 function BaseCentos() {
     PrintGreen "Installing the base tools..."
     sleep 3
-    sudo yum install wget curl git zip unzip nano openssl cron lsof -y
+    sudo yum install wget curl git zip unzip nano openssl cron lsof jq -y
 }
 function BaseUbuntu() {
     printf " \n"
     echo "$(tput setaf 2)Installing the base tools....$(tput sgr0)"
     sleep 3
-    sudo apt install wget curl git zip unzip nano openssl cron lsof -y
+    sudo apt install wget curl git zip unzip nano openssl cron lsof jq -y
 }
 
 # Install the base system for the specified distribution.
