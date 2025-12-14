@@ -479,7 +479,7 @@ function successMessage() {
     echo "
     "$(tput setaf 2)================================Install KiwiPanel Done!==============================$(tput sgr0)"
 
-    Register and Login at : http://$IPADDRESS:$KIWIPANEL_PORT/$kiwipanel_passcode
+    Login at : http://$IPADDRESS:$KIWIPANEL_PORT/$kiwipanel_passcode
 
     "$(tput setaf 2)=====================================================================================$(tput sgr0)"
     "

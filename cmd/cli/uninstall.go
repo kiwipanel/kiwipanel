@@ -56,7 +56,7 @@ func uninstallCmd() {
 	helpers.Run("userdel", "kiwipanel")
 	helpers.Run("groupdel", "kiwisecure")
 
-	if helpers.IsProcessRunning("kiwipanel") {
+	if helpers.IsServiceRunning("kiwipanel") {
 		fmt.Println("⚠️  KiwiPanel process still helpers.Running!")
 	} else {
 		fmt.Println("✅ No KiwiPanel process found.")
