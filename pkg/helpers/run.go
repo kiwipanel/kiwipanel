@@ -34,3 +34,12 @@ func ExecCombinedOutput(name string, args ...string) (string, error) {
 	}
 	return buf.String(), nil
 }
+
+// RunSilent runs a command and suppresses stdout/stderr.
+// It returns an error if the command fails.
+func RunSilent(name string, args ...string) error {
+	cmd := exec.Command(name, args...)
+	cmd.Stdout = nil
+	cmd.Stderr = nil
+	return cmd.Run()
+}

@@ -48,7 +48,7 @@ function PrintWarning() {
     printf "${YELLOW_BROWN}Warning: ${content}${NC}\n"
 }
 
-generatePassword {
+generatePassword() {
     LENGTH="16"
     if [ ! -z "$1" ]; then
         LENGTH="$1"
@@ -414,6 +414,41 @@ function generate_the_passcode() {
     echo "[INFO] Passcode generated."
 }
 
+install_login_banner() {
+    local PROFILE_D="/etc/profile.d/kiwipanel.sh"
+
+    #install is a GNU command
+    install -d -m 755 /etc/profile.d
+
+    cat > "$PROFILE_D" <<'EOF'
+#!/bin/bash
+# =========================================================
+# KiwiPanel login banner
+# Created by KiwiPanel installer
+# =========================================================
+
+# Exit if shell is not interactive
+[[ $- != *i* ]] && return
+
+# Restrict execution to root or kiwipanel user
+if [[ $EUID -ne 0 && "$USER" != "kiwipanel" ]]; then
+    return
+fi
+
+# Ensure kiwipanel CLI exists
+command -v kiwipanel >/dev/null 2>&1 || return
+
+echo
+/usr/bin/kiwipanel status
+echo
+echo "Type 'kiwipanel' to open the KiwiPanel administration menu."
+echo
+EOF
+
+    chown root:root "$PROFILE_D"
+    chmod 644 "$PROFILE_D"
+}
+
 cleanup() {
     rm -f "$TMP_ZIP"
 }
@@ -524,6 +559,7 @@ function installkiwipanel() {
     linkbinary             
     generate_the_passcode 
     install_systemd_service
+    install_login_banner
 }
 
 function main() {

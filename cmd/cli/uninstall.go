@@ -22,7 +22,7 @@ func init() {
 
 var uninstall = &cobra.Command{
 	Use:   "uninstall",
-	Short: "Uninstall KiwiPanel",
+	Short: "Uninstall KiwiPanel from the system",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		fmt.Println("Start uninstalling KiwiPanel...")
 
@@ -35,31 +35,45 @@ var uninstall = &cobra.Command{
 }
 
 func uninstallCmd() {
-	// Stop and disable service
+	// 1. Stop and disable systemd service (if exists)
 	helpers.Run("systemctl", "stop", "kiwipanel")
 	helpers.Run("systemctl", "disable", "kiwipanel")
 
-	// Remove systemd unit
+	// 2. Remove systemd unit
 	_ = os.Remove("/etc/systemd/system/kiwipanel.service")
 	helpers.Run("systemctl", "daemon-reload")
 
-	// Remove binary (safe even while helpers.Running)
-	_ = os.RemoveAll("/usr/local/bin/kiwipanel")
+	// 3. Remove login shell hook
+	_ = os.Remove("/etc/profile.d/kiwipanel.sh")
 
-	// Remove data
+	// 4. Remove binary
+	_ = os.Remove("/usr/local/bin/kiwipanel")
+
+	// 5. Remove configuration
+	_ = os.RemoveAll("/etc/kiwipanel")
+
+	// 6. Remove runtime data (optional)
 	if !keepData {
 		_ = os.RemoveAll("/opt/kiwipanel")
 		_ = os.RemoveAll("/var/log/kiwipanel")
+		fmt.Println("✔ Runtime data removed")
+	} else {
+		fmt.Println("ℹ Runtime data preserved (--keep-data)")
 	}
 
-	// Remove user/group
-	helpers.Run("userdel", "kiwipanel")
-	helpers.Run("groupdel", "kiwisecure")
+	// 7. Remove user and group safely
+	if helpers.UserExists("kiwipanel") {
+		helpers.Run("userdel", "kiwipanel")
+	}
 
+	if helpers.GroupExists("kiwisecure") {
+		helpers.Run("groupdel", "kiwisecure")
+	}
+
+	// 8. Final verification
 	if helpers.IsServiceRunning("kiwipanel") {
-		fmt.Println("⚠️  KiwiPanel process still helpers.Running!")
+		fmt.Println("⚠️  KiwiPanel process still running")
 	} else {
-		fmt.Println("✅ No KiwiPanel process found.")
-		fmt.Println("✅ KiwiPanel successfully uninstalled.")
+		fmt.Println("✅ KiwiPanel successfully uninstalled")
 	}
 }
