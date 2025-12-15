@@ -18,7 +18,9 @@
 clear
 date
 LANG=en_US.UTF-8
-locale-gen en_US.UTF-8
+if command -v locale-gen >/dev/null 2>&1; then
+    locale-gen en_US.UTF-8
+fi
 export LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8
 # Stop on error 
 set -e
@@ -46,7 +48,7 @@ function PrintWarning() {
     printf "${YELLOW_BROWN}Warning: ${content}${NC}\n"
 }
 
-function generatePassword {
+generatePassword {
     LENGTH="16"
     if [ ! -z "$1" ]; then
         LENGTH="$1"
@@ -321,7 +323,9 @@ extract_package() {
     unzip -oq "$TMP_ZIP" -d /opt/
 }
 
-create_users_and_groups() {
+create_group_and_user() {
+    echo "==> Creating kiwisecure group"
+    getent group kiwisecure >/dev/null || groupadd kiwisecure    
     echo "==> Creating kiwipanel user"
     if ! id kiwipanel >/dev/null 2>&1; then
         useradd --system \
@@ -329,9 +333,7 @@ create_users_and_groups() {
             --home-dir "$INSTALL_DIR" \
             --shell /usr/sbin/nologin \
             kiwipanel
-    fi
-    echo "==> Creating kiwisecure group"
-    getent group kiwisecure >/dev/null || groupadd kiwisecure
+    fi    
 }
 
 
@@ -348,6 +350,23 @@ fix_permissions() {
     else
         echo "⚠️ Warning: binary not found at $INSTALL_DIR/bin/kiwipanel"
     fi
+}
+
+create_system_directories() {
+    echo "==> Creating KiwiPanel system directories"
+
+    mkdir -p /etc/kiwipanel/{sites,users}
+    mkdir -p /var/log/kiwipanel
+    mkdir -p /var/lib/kiwipanel
+
+    chown -R kiwipanel:kiwisecure /etc/kiwipanel
+    chown -R kiwipanel:kiwisecure /var/log/kiwipanel
+    chown -R kiwipanel:kiwisecure /var/lib/kiwipanel
+
+    chmod 750 /etc/kiwipanel
+    chmod 750 /etc/kiwipanel/sites /etc/kiwipanel/users
+    chmod 750 /var/log/kiwipanel
+    chmod 750 /var/lib/kiwipanel
 }
 
 function linkbinary(){
@@ -390,9 +409,8 @@ function generate_the_passcode() {
     fi
     kiwipanel_passcode=$(generate_random_string)
     printf '%s\n' "$kiwipanel_passcode" > "$PASSCODE_FILE"
-    chown root:kiwipanel "$PASSCODE_FILE"
+    chown kiwipanel:kiwisecure "$PASSCODE_FILE"
     chmod 640 "$PASSCODE_FILE"
-
     echo "[INFO] Passcode generated."
 }
 
@@ -416,26 +434,26 @@ function create_swap() {
     # Calculate the size for the swap file (assuming the same size as RAM)
     swap_size_kb=$total_ram_kb
     # Create a swap file
-    sudo fallocate -l ${swap_size_kb}K /swapfile
+    fallocate -l ${swap_size_kb}K /swapfile
     # Set appropriate permissions for the swap file
-    sudo chmod 600 /swapfile
+    chmod 600 /swapfile
     # Make it a swap file
-    sudo mkswap /swapfile
+    mkswap /swapfile
     # Enable the swap file
-    sudo swapon /swapfile
+    swapon /swapfile
     # Add an entry to /etc/fstab to make the swap file persistent
-    echo "/swapfile none swap sw 0 0" | sudo tee -a /etc/fstab
+    echo "/swapfile none swap sw 0 0" | tee -a /etc/fstab
 }
 
 function UpdateUbuntu() {
     PrintGreen "Updating the system..."
     sleep 3
-    sudo apt-get update && sudo apt-get -y upgrade
+    apt-get update && sudo apt-get -y upgrade
 }
 function BaseCentos() {
     PrintGreen "Installing the base tools..."
     sleep 3
-    sudo yum install wget curl git zip unzip nano openssl cron lsof jq -y
+    yum install wget curl git zip unzip nano openssl cron lsof jq -y
 }
 function BaseUbuntu() {
     printf " \n"
@@ -468,6 +486,16 @@ check_port_usage() {
     echo "✅ Port $port is free."
 }
 
+function verify(){
+    echo "==> Verifying ownership"
+    for path in /opt/kiwipanel /etc/kiwipanel /var/log/kiwipanel /var/lib/kiwipanel; do
+    owner=$(stat -c "%U:%G" "$path")
+    if [ "$owner" != "kiwipanel:kiwisecure" ]; then
+        PrintWarning "$path ownership is $owner (expected kiwipanel:kiwisecure)"
+    fi
+    done
+}
+
 
 function successMessage() {    
     printf " \n"
@@ -490,8 +518,9 @@ function installkiwipanel() {
     show_version
     download_package    
     extract_package
-    create_users_and_groups
-    fix_permissions
+    create_group_and_user
+    create_system_directories
+    fix_permissions    
     linkbinary             
     generate_the_passcode 
     install_systemd_service
@@ -503,6 +532,7 @@ function main() {
     create_swap    
     install_base            
     installkiwipanel
+    verify
     successMessage        
     # Using the keyword `trap` to call the function cleanUp on script exit (EXIT signal)
     #trap clean_up EXIT

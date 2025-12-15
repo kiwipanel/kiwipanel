@@ -98,7 +98,7 @@ func runAllChecks(doFix bool) *CheckReport {
 	}
 
 	// 2. Config check
-	cfgPaths := []string{"/opt/kiwipanel/config/panel.toml"}
+	cfgPaths := []string{"/opt/kiwipanel/config/kiwipanel.toml"}
 	cfgFound := false
 	for _, p := range cfgPaths {
 		if _, err := os.Stat(p); err == nil {

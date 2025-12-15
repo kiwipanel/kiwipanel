@@ -5,7 +5,7 @@ After=network.target
 [Service]
 Type=simple
 User=kiwipanel
-Group=kiwipanel
+Group=kiwisecure
 
 # Working directory (folder, not binary) (Because the binary need files inside this folder)
 WorkingDirectory=/opt/kiwipanel

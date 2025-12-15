@@ -1,6 +1,6 @@
 ## KiwiPanel scaffolding
 
-ALERT: NOT READY FOR PRODUCTION, STILL IN THE EARLY STAGE OF DEVELOPMENT.
+ALERT: WARNING: PRE-ALPHA RELEASE. DO NOT DEPLOY TO PRODUCTION.
 
 KiwiPanel is a lightweight control panel designed to help you efficiently manage your LEMP (Linux, Nginx, MariaDB, PHP) and LOMP (Linux, OpenLiteSpeed, MariaDB, PHP) stack with minimal hassle.
 
@@ -36,7 +36,7 @@ On some cloud service providers such as Amazon Lightsail or Oracle, you have to 
 - https://docs.openlitespeed.org/installation/script/
 - https://github.com/hestiacp/hestiacp
 - https://github.com/ConvoyPanel/panel
-- https://github.com/wptangtoc/wptangtoc-ols/
+- https://github.com/wptangtoc/wptangtoc-ols/ or https://archive.is/LJj1a
 - https://github.com/QROkes/webinoly
 - https://installer.cloudpanel.io/ce/v2/install.sh
 - https://github.com/sanvu88/ubuntu-lemp-stack
