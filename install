@@ -48,7 +48,7 @@ function PrintWarning() {
     printf "${YELLOW_BROWN}Warning: ${content}${NC}\n"
 }
 
-generatePassword() {
+function generatePassword() {
     LENGTH="16"
     if [ ! -z "$1" ]; then
         LENGTH="$1"
@@ -56,7 +56,7 @@ generatePassword() {
     echo $(openssl rand -base64 64 | tr -dc a-zA-Z0-9=+ | fold -w ${LENGTH} | head -1)
 }
 
-generate_random_string() {
+function generate_random_string() {
     tr -dc 'a-z0-9' < /dev/urandom | head -c 9
 }
 
@@ -96,7 +96,7 @@ if systemctl list-unit-files | grep -q "^kiwipanel.service"; then
     PrintRed "Please install on a fresh compute or manually remove the existing service."
     exit 1
 else
-    PrintGreen "Thanks for choosing KiwiPanel... Starting installation..."
+    PrintGreen "Thanks for choosing KiwiPanel. Starting installation."
 fi
 
 # Detect the system's architecture
@@ -295,12 +295,12 @@ function check_condition_before_install() {
 }
 
 #====================================Start Installing KiwiPanel ====================================
-prepare_directories() {
+function prepare_directories() {
     echo "==> Preparing directories"
     mkdir -p "$INSTALL_DIR"
 }
 
-show_version(){
+function show_version(){
     LATEST=$(curl -s https://raw.githubusercontent.com/kiwipanel/kiwipanel/refs/heads/main/version.json)
     VERSION=$(echo "$LATEST" | jq -r '.version')
     URL=$(echo "$LATEST" | jq -r '.download_url')
@@ -310,7 +310,7 @@ show_version(){
     sleep 2
 }
 
-download_package() {
+function download_package() {
     echo "==> Downloading KiwiPanel package"
     if ! curl -L --fail "$ZIP_URL" -o "$TMP_ZIP"; then
         echo "❌ Failed to download KiwiPanel package. Exiting."
@@ -318,12 +318,12 @@ download_package() {
     fi
 }
 
-extract_package() {
+function extract_package() {
     echo "==> Extracting files"
     unzip -oq "$TMP_ZIP" -d /opt/
 }
 
-create_group_and_user() {
+function create_group_and_user() {
     echo "==> Creating kiwisecure group"
     getent group kiwisecure >/dev/null || groupadd kiwisecure    
     echo "==> Creating kiwipanel user"
@@ -338,7 +338,7 @@ create_group_and_user() {
 
 
 #------------------------------------------------------------Fixing ownership and permissions (because root created files beforehand
-fix_permissions() {
+function fix_permissions() {
     echo "==> Fixing ownership and permissions"
     chown -R kiwipanel:kiwisecure "$INSTALL_DIR"
 
@@ -352,7 +352,7 @@ fix_permissions() {
     fi
 }
 
-create_system_directories() {
+function create_system_directories() {
     echo "==> Creating KiwiPanel system directories"
 
     mkdir -p /etc/kiwipanel/{sites,users}
@@ -414,7 +414,7 @@ function generate_the_passcode() {
     echo "[INFO] Passcode generated."
 }
 
-install_login_banner() {
+function install_login_banner() {
     local PROFILE_D="/etc/profile.d/kiwipanel.sh"
 
     #install is a GNU command
@@ -436,10 +436,10 @@ if [[ $EUID -ne 0 && "$USER" != "kiwipanel" ]]; then
 fi
 
 # Ensure kiwipanel CLI exists
-command -v kiwipanel >/dev/null 2>&1 || return
+KIWIPANEL_BIN="$(command -v kiwipanel 2>/dev/null)" || return
 
 echo
-/usr/bin/kiwipanel status
+"$KIWIPANEL_BIN" status
 echo
 echo "Type 'kiwipanel' to open the KiwiPanel administration menu."
 echo
@@ -449,7 +449,24 @@ EOF
     chmod 644 "$PROFILE_D"
 }
 
-cleanup() {
+function disable_default_motd() {
+    echo "==> Normalizing login banner experience"
+
+    # Debian / Ubuntu
+    if [ -d /etc/update-motd.d ]; then
+        chmod -x /etc/update-motd.d/* || true
+        return
+    fi
+
+    # CentOS / RHEL / Alma / Rocky
+    if [ -f /etc/redhat-release ]; then
+        : > /etc/motd
+        : > /etc/issue
+        return
+    fi
+}
+
+function cleanup() {
     rm -f "$TMP_ZIP"
 }
 
@@ -509,7 +526,7 @@ function install_base() {
 }
 
 #Check port https://ping.eu/port-chk/check_port_usage() {
-check_port_usage() {
+function check_port_usage() {
     local port="$1"
     PrintGreen "Checking port $port..."
 
@@ -560,6 +577,7 @@ function installkiwipanel() {
     generate_the_passcode 
     install_systemd_service
     install_login_banner
+    disable_default_motd
 }
 
 function main() {
