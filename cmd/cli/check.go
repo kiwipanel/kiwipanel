@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -112,6 +113,169 @@ func CheckSSHRootLogin() (bool, string) {
 	return false, "root login enabled"
 }
 
+func CheckSSHPasswordAuth() (bool, string) {
+	ok, out := cmdOK("sshd", "-T")
+	if !ok {
+		return false, "cannot read sshd config"
+	}
+
+	if strings.Contains(out, "passwordauthentication no") {
+		return true, "password authentication disabled"
+	}
+
+	return false, "password authentication enabled"
+}
+
+func CheckSSHPort() (bool, string) {
+	ok, out := cmdOK("sshd", "-T")
+	if !ok {
+		return false, "cannot read sshd config"
+	}
+
+	for _, line := range strings.Split(out, "\n") {
+		if strings.HasPrefix(line, "port ") {
+			port := strings.TrimSpace(strings.TrimPrefix(line, "port "))
+			if port == "22" {
+				return false, "using default SSH port 22"
+			}
+			return true, "using custom port " + port
+		}
+	}
+
+	return false, "SSH port not detected"
+}
+
+func CheckFirewall() (bool, string) {
+	if _, err := exec.LookPath("ufw"); err == nil {
+		out, _ := exec.Command("ufw", "status").Output()
+		if strings.Contains(string(out), "Status: active") {
+			return true, "ufw active"
+		}
+		return false, "ufw installed but inactive"
+	}
+
+	if _, err := exec.LookPath("firewall-cmd"); err == nil {
+		out, _ := exec.Command("firewall-cmd", "--state").Output()
+		if strings.TrimSpace(string(out)) == "running" {
+			return true, "firewalld running"
+		}
+		return false, "firewalld inactive"
+	}
+
+	if _, err := exec.LookPath("nft"); err == nil {
+		out, _ := exec.Command("nft", "list", "ruleset").Output()
+		if strings.Contains(string(out), "table") {
+			return true, "nftables rules present"
+		}
+		return false, "nftables empty"
+	}
+
+	return false, "no firewall detected"
+}
+
+func CheckIntrusionPrevention() (bool, string) {
+	if svcRunning("fail2ban") {
+		return true, "fail2ban active"
+	}
+	if svcRunning("crowdsec") {
+		return true, "crowdsec active"
+	}
+	return false, "no intrusion prevention system (fail2ban || crowdsec) running"
+}
+
+func CheckDiskUsage() (bool, string) {
+	out, err := exec.Command("df", "-P", "/").Output()
+	if err != nil {
+		return true, "cannot check disk usage"
+	}
+
+	lines := strings.Split(string(out), "\n")
+	if len(lines) < 2 {
+		return true, "unexpected df output"
+	}
+
+	fields := strings.Fields(lines[1])
+	usage := strings.TrimSuffix(fields[4], "%")
+
+	if pct := atoiSafe(usage); pct >= 80 {
+		return false, fmt.Sprintf("disk usage %d%%", pct)
+	}
+
+	return true, fmt.Sprintf("disk usage %s%%", usage)
+}
+
+func CheckMemoryUsage() (bool, string) {
+	out, err := exec.Command("free").Output()
+	if err != nil {
+		return true, "cannot check memory"
+	}
+
+	for _, line := range strings.Split(string(out), "\n") {
+		if strings.HasPrefix(line, "Mem:") {
+			f := strings.Fields(line)
+			used := atoiSafe(f[2])
+			total := atoiSafe(f[1])
+			pct := (used * 100) / total
+
+			if pct >= 80 {
+				return false, fmt.Sprintf("memory usage %d%%", pct)
+			}
+			return true, fmt.Sprintf("memory usage %d%%", pct)
+		}
+	}
+
+	return true, "memory info unavailable"
+}
+
+func CheckWorldWritableDirs() (bool, string) {
+	out, err := exec.Command("find", "/", "-xdev", "-type", "d", "-perm", "-0002").Output()
+	if err != nil {
+		return true, "cannot scan directories"
+	}
+
+	var bad []string
+	for _, d := range strings.Split(string(out), "\n") {
+		if d != "" && !strings.HasPrefix(d, "/tmp") && !strings.HasPrefix(d, "/var/tmp") {
+			bad = append(bad, d)
+		}
+	}
+
+	if len(bad) > 0 {
+		return false, fmt.Sprintf("%d world-writable dirs", len(bad))
+	}
+
+	return true, "no unsafe world-writable dirs"
+}
+
+func CheckSuspiciousSUID() (bool, string) {
+	out, err := exec.Command("find", "/", "-xdev", "-perm", "-4000", "-type", "f").Output()
+	if err != nil {
+		return true, "cannot scan suid files"
+	}
+
+	known := []string{"sudo", "passwd", "su", "mount", "umount"}
+	var suspicious int
+
+	for _, f := range strings.Split(string(out), "\n") {
+		safe := false
+		for _, k := range known {
+			if strings.Contains(f, k) {
+				safe = true
+				break
+			}
+		}
+		if f != "" && !safe {
+			suspicious++
+		}
+	}
+
+	if suspicious > 0 {
+		return false, fmt.Sprintf("%d suspicious suid files", suspicious)
+	}
+
+	return true, "no suspicious suid files"
+}
+
 func runAllChecks(doFix bool) *CheckReport {
 	results := []CheckResult{}
 
@@ -201,21 +365,40 @@ func runAllChecks(doFix bool) *CheckReport {
 		}
 	}
 
-	// 6. Security checks (ported from vps-audit)
-	{
-		ok, detail := CheckSSHRootLogin()
-		results = append(results, CheckResult{
-			Name:    "security:ssh_root_login",
-			OK:      ok,
-			Details: detail,
-		})
+	// 6. Security checks
+	securityChecks := []struct {
+		name string
+		fn   func() (bool, string)
+	}{
+		{"system:public_ip", CheckPublicIP},
+		{"system:cpu_model", CheckCPUModel},
+		{"system:load_average", CheckLoadAverage},
+		{"system:uptime_since", CheckUptimeSince},
+		{"system:disk_usage", CheckDiskUsage},
+		{"system:memory_usage", CheckMemoryUsage},
+		{"system:users", CheckSystemUsers},
+		{"security:uid0_users", CheckUID0Users},
+		{"security:passwordless_sudo", CheckPasswordlessSudo},
+		{"security:interactive_shells", CheckInteractiveShells},
+		{"security:unattended_upgrades", CheckUnattendedUpgrades},
+		{"security:pending_updates", CheckPendingUpdates},
+		{"security:firewall", CheckFirewall},
+		{"firewall:ufw", CheckUFW},
+		{"firewall:iptables", CheckIPTables},
+		{"firewall:nftables", CheckNFTables},
+		{"security:reboot_required", CheckRebootRequired},
+		{"security:ssh_root_login", CheckSSHRootLogin},
+		{"security:ssh_password_auth", CheckSSHPasswordAuth},
+		{"security:ssh_port", CheckSSHPort},
+		{"security:intrusion_prevention", CheckIntrusionPrevention},
+		{"security:world_writable_dirs", CheckWorldWritableDirs},
+		{"security:suid_files", CheckSuspiciousSUID},
 	}
 
-	// 7. Reboot required check
-	{
-		ok, detail := CheckRebootRequired()
+	for _, sc := range securityChecks {
+		ok, detail := sc.fn()
 		results = append(results, CheckResult{
-			Name:    "security:reboot_required",
+			Name:    sc.name,
 			OK:      ok,
 			Details: detail,
 		})
@@ -226,20 +409,6 @@ func runAllChecks(doFix bool) *CheckReport {
 		Results:   results,
 	}
 }
-
-// func printHuman(r *CheckReport) {
-// 	fmt.Println()
-// 	color.Green("KiwiPanel System Check")
-// 	fmt.Println("======================")
-// 	for _, it := range r.Results {
-// 		icon := "✖"
-// 		if it.OK {
-// 			icon = "✔"
-// 		}
-// 		fmt.Printf(" [%s] %s - %s\n", icon, padRight(it.Name, 30), it.Details)
-// 	}
-// 	fmt.Printf("\nHealth: %d%% - %s\n", r.HealthPct, r.Summary)
-// }
 
 func printHuman(r *CheckReport) {
 	fmt.Println()
@@ -261,7 +430,7 @@ func printHuman(r *CheckReport) {
 			detail = "-"
 		}
 
-		fmt.Printf(" [%s] %-4s %s  %s\n", icon, status, name, detail)
+		fmt.Printf(" [%s] %-4s %s %s\n", icon, status, name, detail)
 	}
 
 	fmt.Println()
@@ -286,6 +455,11 @@ func padRight(s string, width int) string {
 		return s
 	}
 	return s + strings.Repeat(" ", width-len(s))
+}
+
+func atoiSafe(s string) int {
+	i, _ := strconv.Atoi(s)
+	return i
 }
 
 func validateToml(path string) (bool, string) {
@@ -389,4 +563,265 @@ func CheckRebootRequired() (bool, string) {
 	}
 
 	return false, "unable to determine reboot status"
+}
+
+func CheckPublicIP() (bool, string) {
+	cmd := exec.Command("curl", "-s", "--max-time", "5", "https://api.ipify.org")
+	out, err := cmd.Output()
+	if err != nil {
+		return false, "unable to detect public IP"
+	}
+
+	ip := strings.TrimSpace(string(out))
+	if net.ParseIP(ip) == nil {
+		return false, "invalid public IP response"
+	}
+
+	return true, ip
+}
+
+func CheckCPUModel() (bool, string) {
+	b, err := os.ReadFile("/proc/cpuinfo")
+	if err != nil {
+		return false, "cannot read /proc/cpuinfo"
+	}
+
+	for _, line := range strings.Split(string(b), "\n") {
+		if strings.HasPrefix(line, "model name") {
+			parts := strings.SplitN(line, ":", 2)
+			if len(parts) == 2 {
+				return true, strings.TrimSpace(parts[1])
+			}
+		}
+	}
+
+	return false, "cpu model not found"
+}
+
+func CheckLoadAverage() (bool, string) {
+	b, err := os.ReadFile("/proc/loadavg")
+	if err != nil {
+		return false, "cannot read load average"
+	}
+
+	parts := strings.Fields(string(b))
+	if len(parts) < 3 {
+		return false, "invalid loadavg format"
+	}
+
+	return true, fmt.Sprintf("1m=%s 5m=%s 15m=%s", parts[0], parts[1], parts[2])
+}
+
+func CheckUptimeSince() (bool, string) {
+	out, err := exec.Command("uptime", "-s").Output()
+	if err != nil {
+		return false, "cannot determine uptime start"
+	}
+
+	return true, strings.TrimSpace(string(out))
+}
+
+func CheckUnattendedUpgrades() (bool, string) {
+	if _, err := exec.LookPath("dpkg"); err != nil {
+		return true, "not a Debian-based system"
+	}
+
+	out, _ := exec.Command("dpkg", "-l").Output()
+	if strings.Contains(string(out), "unattended-upgrades") {
+		return true, "automatic security updates enabled"
+	}
+
+	return false, "unattended-upgrades not installed"
+}
+
+func CheckPendingUpdates() (bool, string) {
+	if _, err := exec.LookPath("apt-get"); err != nil {
+		return true, "apt not available"
+	}
+
+	out, err := exec.Command("apt-get", "-s", "upgrade").Output()
+	if err != nil {
+		return true, "cannot simulate upgrades"
+	}
+
+	for _, line := range strings.Split(string(out), "\n") {
+		if strings.Contains(line, " upgraded,") {
+			fields := strings.Fields(line)
+			if len(fields) > 0 && fields[0] != "0" {
+				return false, fields[0] + " updates pending"
+			}
+		}
+	}
+
+	return true, "system up to date"
+}
+
+func CheckUFW() (bool, string) {
+	if _, err := exec.LookPath("ufw"); err != nil {
+		return true, "ufw not installed"
+	}
+
+	out, _ := exec.Command("ufw", "status").Output()
+	if strings.Contains(string(out), "Status: active") {
+		return true, "ufw active"
+	}
+
+	return false, "ufw installed but inactive"
+}
+
+func CheckIPTables() (bool, string) {
+	if _, err := exec.LookPath("iptables"); err != nil {
+		return true, "iptables not installed"
+	}
+
+	out, err := exec.Command("iptables", "-L", "-n").Output()
+	if err != nil {
+		return false, "cannot read iptables rules"
+	}
+
+	if strings.Contains(string(out), "Chain INPUT") {
+		return true, "iptables rules present"
+	}
+
+	return false, "no iptables rules found"
+}
+
+func CheckNFTables() (bool, string) {
+	if _, err := exec.LookPath("nft"); err != nil {
+		return true, "nftables not installed"
+	}
+
+	out, err := exec.Command("nft", "list", "ruleset").Output()
+	if err != nil {
+		return false, "cannot read nftables ruleset"
+	}
+
+	if strings.Contains(string(out), "table") {
+		return true, "nftables rules active"
+	}
+
+	return false, "nftables installed but empty ruleset"
+}
+
+func CheckSystemUsers() (bool, string) {
+	b, err := os.ReadFile("/etc/passwd")
+	if err != nil {
+		return false, "cannot read /etc/passwd"
+	}
+
+	total := 0
+	login := 0
+
+	for _, line := range strings.Split(string(b), "\n") {
+		if line == "" {
+			continue
+		}
+
+		total++
+
+		parts := strings.Split(line, ":")
+		if len(parts) < 7 {
+			continue
+		}
+
+		uid, err := strconv.Atoi(parts[2])
+		if err != nil {
+			continue
+		}
+
+		shell := parts[6]
+
+		if uid >= 1000 &&
+			!strings.Contains(shell, "nologin") &&
+			!strings.Contains(shell, "false") {
+			login++
+		}
+	}
+
+	return true, fmt.Sprintf("total=%d, login-capable=%d", total, login)
+}
+
+func CheckUID0Users() (bool, string) {
+	b, err := os.ReadFile("/etc/passwd")
+	if err != nil {
+		return false, "cannot read /etc/passwd"
+	}
+
+	var uid0 []string
+
+	for _, line := range strings.Split(string(b), "\n") {
+		if line == "" {
+			continue
+		}
+
+		parts := strings.Split(line, ":")
+		if len(parts) < 3 {
+			continue
+		}
+
+		if parts[2] == "0" {
+			uid0 = append(uid0, parts[0])
+		}
+	}
+
+	if len(uid0) == 1 && uid0[0] == "root" {
+		return true, "only root has UID 0"
+	}
+
+	return false, "UID 0 users: " + strings.Join(uid0, ", ")
+}
+
+func CheckPasswordlessSudo() (bool, string) {
+	if _, err := exec.LookPath("sudo"); err != nil {
+		return true, "sudo not installed"
+	}
+
+	cmd := exec.Command("sudo", "-l", "-U", "root")
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		// cannot list sudo rules → fail open
+		return true, "cannot inspect sudo rules"
+	}
+
+	if strings.Contains(string(out), "NOPASSWD") {
+		return false, "passwordless sudo detected"
+	}
+
+	return true, "no passwordless sudo rules"
+}
+
+func CheckInteractiveShells() (bool, string) {
+	b, err := os.ReadFile("/etc/passwd")
+	if err != nil {
+		return false, "cannot read /etc/passwd"
+	}
+
+	var users []string
+
+	for _, line := range strings.Split(string(b), "\n") {
+		if line == "" {
+			continue
+		}
+
+		parts := strings.Split(line, ":")
+		if len(parts) < 7 {
+			continue
+		}
+
+		user := parts[0]
+		uid, _ := strconv.Atoi(parts[2])
+		shell := parts[6]
+
+		if uid >= 1000 &&
+			!strings.Contains(shell, "nologin") &&
+			!strings.Contains(shell, "false") {
+			users = append(users, user)
+		}
+	}
+
+	if len(users) == 0 {
+		return true, "no interactive users"
+	}
+
+	return true, fmt.Sprintf("%d interactive users", len(users))
 }

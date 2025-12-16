@@ -57,7 +57,7 @@ function generatePassword() {
 }
 
 function generate_random_string() {
-    tr -dc 'a-z0-9' < /dev/urandom | head -c 9
+    tr -dc 'a-z0-9' < /dev/urandom | head -c 12
 }
 
 # Check for sudo/root privileges######################################

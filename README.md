@@ -19,6 +19,14 @@ curl -sLO https://raw.githubusercontent.com/kiwipanel/kiwipanel/main/install && 
 ##### Port 8443: 
 On some cloud service providers such as Amazon Lightsail or Oracle, you have to manually open the port 8443 inside their control dashboards.
 
+##### Supported Operating Systems:
+Kiwipanel supports the following operating systems, given that OpenLiteSpeed supports current and non-EOL versions of the following Linux distributions:
+- CentOS* 8, 9, 10
+- Debian  11, 12, 13
+- Ubuntu  22, 24
+
+*Includes RedHat Enterprise Linux and derivatives: AlmaLinux, CloudLinux, Oracle Linux, RockyLinux, VzLinux, etc.
+
 ### Dependencies
 - https://github.com/go-chi/chi
 - https://github.com/shirou/gopsutil/
@@ -34,6 +42,7 @@ On some cloud service providers such as Amazon Lightsail or Oracle, you have to 
 
 ### References
 - https://docs.openlitespeed.org/installation/script/
+- https://github.com/litespeedtech/ols1clk/blob/master/ols1clk.sh
 - https://github.com/vernu/vps-audit
 - https://github.com/hestiacp/hestiacp
 - https://github.com/ConvoyPanel/panel
