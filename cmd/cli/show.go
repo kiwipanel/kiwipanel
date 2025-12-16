@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/fatih/color"
 	"github.com/kiwipanel/kiwipanel/pkg/helpers"
 	"github.com/spf13/cobra"
 )
@@ -26,7 +27,10 @@ var show = &cobra.Command{
 			return fmt.Errorf("failed to show KiwiPanel: %w", err)
 		}
 
-		fmt.Println("KiwiPanel web interface is now active.")
+		//fmt.Println("KiwiPanel web interface is now active.")
+
+		message := "KiwiPanel web interface is now active. You can access it in your web browser."
+		color.Green(message)
 		return nil
 	},
 }

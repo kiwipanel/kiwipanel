@@ -1,20 +1,37 @@
 package cli
 
 import (
-	"fmt"
+	"bytes"
+	"os/exec"
 
+	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 )
 
 func init() {
-	rootCmd.AddCommand(status)
+	rootCmd.AddCommand(statusCmd)
 }
 
-var status = &cobra.Command{
+var statusCmd = &cobra.Command{
 	Use:   "status",
-	Short: "Check the status of KiwiPanel",
+	Short: "Show KiwiPanel service status",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		fmt.Println("Check the status of KiwiPanel:")
-		return nil
+		c := exec.Command("systemctl", "is-active", "kiwipanel.service")
+		out, err := c.Output()
+
+		status := string(bytes.TrimSpace(out))
+
+		switch status {
+		case "active":
+			color.Green("● KiwiPanel is running")
+		case "inactive":
+			color.Yellow("● KiwiPanel is stopped")
+		case "failed":
+			color.Red("● KiwiPanel has failed")
+		default:
+			color.White("● KiwiPanel status: %s", status)
+		}
+
+		return err
 	},
 }

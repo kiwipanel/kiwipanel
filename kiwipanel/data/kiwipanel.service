@@ -10,7 +10,7 @@ Group=kiwisecure
 # Working directory (folder, not binary) (Because the binary need files inside this folder)
 WorkingDirectory=/opt/kiwipanel
 
-ExecStart=/opt/kiwipanel/bin/kiwipanel start
+ExecStart=/opt/kiwipanel/bin/kiwipanel serve
 
 Restart=always
 RestartSec=5s

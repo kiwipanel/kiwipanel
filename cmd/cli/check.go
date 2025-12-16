@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/fs"
 	"net"
 	"os"
 	"os/exec"
@@ -11,8 +12,16 @@ import (
 	"strings"
 	"time"
 
+	"github.com/fatih/color"
 	"github.com/pelletier/go-toml/v2"
 	"github.com/spf13/cobra"
+)
+
+var (
+	colorOK    = color.New(color.FgGreen).SprintFunc()
+	colorFail  = color.New(color.FgRed).SprintFunc()
+	colorWarn  = color.New(color.FgYellow).SprintFunc()
+	colorTitle = color.New(color.Bold, color.FgCyan).SprintFunc()
 )
 
 type CheckResult struct {
@@ -34,6 +43,9 @@ var (
 )
 
 func init() {
+	if os.Getenv("NO_COLOR") != "" {
+		color.NoColor = true
+	}
 	rootCmd.AddCommand(checkCmd)
 	// checkCmd.Flags().BoolVar(&checkFix, "fix", false, "Attempt safe fixes for common problems")
 	// checkCmd.Flags().BoolVar(&checkJSON, "json", false, "Output result as JSON")
@@ -77,6 +89,27 @@ var checkCmd = &cobra.Command{
 
 		return nil
 	},
+}
+
+func cmdOK(name string, args ...string) (bool, string) {
+	out, err := exec.Command(name, args...).CombinedOutput()
+	if err != nil {
+		return false, string(out)
+	}
+	return true, string(out)
+}
+
+func CheckSSHRootLogin() (bool, string) {
+	ok, out := cmdOK("sshd", "-T")
+	if !ok {
+		return false, "cannot read sshd config"
+	}
+
+	if strings.Contains(out, "permitrootlogin no") || strings.Contains(out, "permitrootlogin prohibit-password") {
+		return true, "root login disabled"
+	}
+
+	return false, "root login enabled"
 }
 
 func runAllChecks(doFix bool) *CheckReport {
@@ -123,7 +156,7 @@ func runAllChecks(doFix bool) *CheckReport {
 	}
 
 	// 3. Services
-	serviceNames := []string{"kiwipanel.service", "openlitespeed", "mariadb", "redis"}
+	serviceNames := []string{"kiwipanel.service", "openlitespeed", "mariadb", "redis", "nginx", "apache2", "httpd"}
 	for _, s := range serviceNames {
 		if serviceExists(s) {
 			if svcRunning(s) {
@@ -145,12 +178,13 @@ func runAllChecks(doFix bool) *CheckReport {
 	// 4. Ports
 	ports := []int{80, 443, 7080, 8443, 3306, 6379}
 	for _, p := range ports {
-		ok, detail := portFree(p)
-		if ok {
-			results = append(results, CheckResult{fmt.Sprintf("port:%d", p), true, "free"})
-		} else {
-			results = append(results, CheckResult{fmt.Sprintf("port:%d", p), false, detail})
-		}
+		ok, detail := checkPort(p)
+
+		results = append(results, CheckResult{
+			Name:    fmt.Sprintf("port:%d", p),
+			OK:      ok,
+			Details: detail,
+		})
 	}
 
 	// 5. Directories
@@ -167,24 +201,84 @@ func runAllChecks(doFix bool) *CheckReport {
 		}
 	}
 
+	// 6. Security checks (ported from vps-audit)
+	{
+		ok, detail := CheckSSHRootLogin()
+		results = append(results, CheckResult{
+			Name:    "security:ssh_root_login",
+			OK:      ok,
+			Details: detail,
+		})
+	}
+
+	// 7. Reboot required check
+	{
+		ok, detail := CheckRebootRequired()
+		results = append(results, CheckResult{
+			Name:    "security:reboot_required",
+			OK:      ok,
+			Details: detail,
+		})
+	}
+
 	return &CheckReport{
 		Timestamp: time.Now(),
 		Results:   results,
 	}
 }
 
+// func printHuman(r *CheckReport) {
+// 	fmt.Println()
+// 	color.Green("KiwiPanel System Check")
+// 	fmt.Println("======================")
+// 	for _, it := range r.Results {
+// 		icon := "✖"
+// 		if it.OK {
+// 			icon = "✔"
+// 		}
+// 		fmt.Printf(" [%s] %s - %s\n", icon, padRight(it.Name, 30), it.Details)
+// 	}
+// 	fmt.Printf("\nHealth: %d%% - %s\n", r.HealthPct, r.Summary)
+// }
+
 func printHuman(r *CheckReport) {
 	fmt.Println()
-	fmt.Println("KiwiPanel System Check")
-	fmt.Println("======================")
+	fmt.Println(colorTitle("KiwiPanel System Check"))
+	fmt.Println(colorTitle("======================"))
+
 	for _, it := range r.Results {
-		icon := "✖"
+		icon := colorFail("✖")
+		status := colorFail("FAIL")
+
 		if it.OK {
-			icon = "✔"
+			icon = colorOK("✔")
+			status = colorOK("OK")
 		}
-		fmt.Printf(" [%s] %s - %s\n", icon, padRight(it.Name, 30), it.Details)
+
+		name := padRight(it.Name, 30)
+		detail := it.Details
+		if detail == "" {
+			detail = "-"
+		}
+
+		fmt.Printf(" [%s] %-4s %s  %s\n", icon, status, name, detail)
 	}
-	fmt.Printf("\nHealth: %d%% - %s\n", r.HealthPct, r.Summary)
+
+	fmt.Println()
+
+	healthColor := colorOK
+	if r.HealthPct < 80 {
+		healthColor = colorWarn
+	}
+	if r.HealthPct < 50 {
+		healthColor = colorFail
+	}
+
+	fmt.Printf(
+		"Health: %s - %s\n",
+		healthColor(fmt.Sprintf("%d%%", r.HealthPct)),
+		healthColor(r.Summary),
+	)
 }
 
 func padRight(s string, width int) string {
@@ -209,14 +303,11 @@ func validateToml(path string) (bool, string) {
 }
 
 func serviceExists(name string) bool {
-	// use systemctl if available
 	if _, err := exec.LookPath("systemctl"); err == nil {
-		err := exec.Command("systemctl", "status", name).Run()
+		err := exec.Command("systemctl", "list-unit-files", name).Run()
 		return err == nil
 	}
-	// fallback: check if process name exists
-	out, _ := exec.Command("ps", "aux").Output()
-	return strings.Contains(string(out), name)
+	return false
 }
 
 func svcRunning(name string) bool {
@@ -234,6 +325,28 @@ func portFree(port int) (bool, string) {
 	}
 	ln.Close()
 	return true, ""
+}
+
+func checkPort(port int) (bool, string) {
+	cmd := exec.Command("ss", "-lntp")
+	out, err := cmd.Output()
+	if err != nil {
+		// If ss is missing, fail open (do not block)
+		return true, "cannot inspect (ss not available)"
+	}
+
+	lines := strings.Split(string(out), "\n")
+	needle := fmt.Sprintf(":%d", port)
+
+	for _, line := range lines {
+		if strings.Contains(line, needle) {
+			// Example line:
+			// LISTEN 0 4096 0.0.0.0:8443 users:(("kiwipanel",pid=1234,fd=7))
+			return false, strings.TrimSpace(line)
+		}
+	}
+
+	return true, "free"
 }
 
 func safeCreateSymlink(src, dst string) error {
@@ -257,4 +370,23 @@ host = "0.0.0.0"
 		return err
 	}
 	return os.WriteFile(path, []byte(skel), 0640)
+}
+
+func CheckRebootRequired() (bool, string) {
+	const rebootFlag = "/var/run/reboot-required"
+
+	_, err := os.Stat(rebootFlag)
+	if err == nil {
+		return false, "system requires a restart to apply updates"
+	}
+
+	if os.IsNotExist(err) {
+		return true, "no restart required"
+	}
+
+	if errors.Is(err, fs.ErrPermission) {
+		return true, "cannot check reboot flag (permission denied)"
+	}
+
+	return false, "unable to determine reboot status"
 }
