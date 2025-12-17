@@ -21,9 +21,50 @@ LANG=en_US.UTF-8
 if command -v locale-gen >/dev/null 2>&1; then
     locale-gen en_US.UTF-8
 fi
-export LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8
+
+export LANG=en_US.UTF-8
+export LC_ALL=en_US.UTF-8
+
 # Stop on error 
-set -e
+set -euo pipefail
+trap 'LogError "Script failed at line $LINENO"' ERR
+
+DEBUG=${DEBUG:-0}
+AUTO_UPGRADE=${AUTO_UPGRADE:-0}
+
+# Create log file
+KIWIPANEL_DIR="/opt/kiwipanel"
+LOG_DIR="$KIWIPANEL_DIR/logs"
+LOG_FILE="$LOG_DIR/install.log"
+
+mkdir -p "$LOG_DIR" || {
+    echo "Failed to create log directory: $LOG_DIR"
+    exit 1
+}
+
+touch "$LOG_FILE" || {
+    echo "Failed to create log file: $LOG_FILE"
+    exit 1
+}
+
+chmod 750 "$KIWIPANEL_DIR" "$LOG_DIR"
+chmod 640 "$LOG_FILE"
+
+function log() {
+    local level="$1"
+    shift
+    local message="$*"
+    local ts
+
+    ts="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+
+    echo "$ts [$level] $message" >> "$LOG_FILE"
+}
+
+LogInfo()  { log INFO  "$@"; }
+LogWarn()  { log WARN  "$@"; }
+LogError() { log ERROR "$@"; }
+LogDebug() { [[ "$DEBUG" == "1" ]] && log DEBUG "$@"; }
 
 # Utilities ###########################################################
 function PrintGreen() {
@@ -32,13 +73,7 @@ function PrintGreen() {
     local content="${1}"
     echo ""
     printf "${GREEN}${content}${NC}\n"
-}
-function PrintRed() {
-    local RED='\033[0;31m'
-    local NC='\033[0m'
-    local content="${1}"
-    echo ""
-    printf "${RED}Error: ${content}${NC}\n"
+    LogInfo "$*"
 }
 
 function PrintWarning() {
@@ -46,7 +81,18 @@ function PrintWarning() {
     local NC='\033[0m'                  # Reset to default color
     local content="${1}"
     printf "${YELLOW_BROWN}Warning: ${content}${NC}\n"
+     LogWarn "$*"
 }
+
+function PrintRed() {
+    local RED='\033[0;31m'
+    local NC='\033[0m'
+    local content="${1}"
+    echo ""
+    printf "${RED}Error: ${content}${NC}\n"
+    LogError "$*"
+}
+
 
 function generatePassword() {
     LENGTH="16"
@@ -107,24 +153,23 @@ kiwipanel_d_start_time=$(date +%s)
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 NC='\033[0m' #NC: Not color: reset color to the default
-IPADDRESS=$(curl -s --connect-timeout 5 http://cpanel.net/showip.cgi || hostname -I | awk '{print $1}')
-readonly DIR=$(pwd)
-readonly HOSTNAME=$(hostname)
+IPADDRESS=$(curl -s --connect-timeout 5 https://cpanel.net/showip.cgi || hostname -I | awk '{print $1}')
+DIR=$(pwd)
+
 # Check the current distro and the kernel
-readonly distro=$(grep -oP 'PRETTY_NAME="\K[^"]+' /etc/os-release | cut -f1 -d' ')
+distro=$(grep -oP 'PRETTY_NAME="\K[^"]+' /etc/os-release | cut -f1 -d' ')
 readonly kernel_version=$(uname -r)
-readonly distro_version=$(echo $(lsb_release -c | cut -d':' -f 2))
+distro_version=$(echo $(lsb_release -c | cut -d':' -f 2))
 
 #Reference: https://www.cloudron.io/get.html
 readonly MINIMUM_DISK_SIZE_GB="5"
-readonly MINIMUM_MEMORY="420" #on Amazon lightsail 423MB,
-readonly curl="curl --fail --connect-timeout 20 --retry 10 --retry-delay 2 --max-time 2400"
+readonly MINIMUM_MEMORY="420" #on Amazon lightsail 423MB, 512MB is not always available
 readonly rootfs_type=$(LC_ALL=C df --output=fstype / | tail -n1)
 readonly physical_memory=$(LC_ALL=C free -m | awk '/Mem:/ { print $2 }')
 readonly disk_size_bytes=$(LC_ALL=C df --output=size / | tail -n1)
 readonly disk_size_gb=$((${disk_size_bytes} / 1024 / 1024))
 readonly current_swap=$(free | awk '/^Swap:/ {print $3}')
-readonly cpu_cores=$(grep -c "processor" /proc/cpuinfo)
+
 
 # Verify the system has minimum requirements met
 if [[ "${rootfs_type}" != "ext4" && "${rootfs_type}" != "xfs" ]]; then
@@ -256,7 +301,7 @@ function check_architecture() {
     fi
 }
 function check_os() {
-    PrintGreen "Checking the OS... Kiwipanel currently supports Ubuntu and Debian only!More to come, surely"
+    PrintGreen "Checking the OS... Kiwipanel currently supports Ubuntu and Debian only!"
     sleep 2
     echo "Your current Kernel: ${kernel_version}"
     echo "Your current Linux distro: ${distro}"
@@ -265,7 +310,7 @@ function check_os() {
             DebianCheck=$(cat /etc/debian_version)
             # Comparing string
             if [[ "${DebianCheck}" < "10" ]]; then
-                echo "Warning: Debian ${DebianCheck} is not supported by KiwiPanel, use Debian 11 or 12 to install"
+                echo "Warning: Debian ${DebianCheck} is not supported by KiwiPanel, use Debian 11, 12 or 13 to install"
                 exit 1
             fi
 
@@ -282,6 +327,17 @@ function check_os() {
         PrintRed "The current version of KiwiPanel only works on Ubuntu or Debian."
         exit 1
     fi
+}
+
+#Check port https://ping.eu/port-chk/check_port_usage() {
+function check_port_usage() {
+    local port="$1"
+    PrintGreen "Checking port $port..."
+    if ss -tuln | awk '{print $5}' | grep -q ":$port$"; then
+        echo "❌ Port $port is already in use. KiwiPanel needs this port."
+        return 1
+    fi
+    echo "✅ Port $port is free."
 }
 
 
@@ -307,7 +363,7 @@ function show_version(){
     NOTES=$(echo "$LATEST" | jq -r '.notes')
     echo "Latest Version: $VERSION"    
     echo "Note: $NOTES"
-    sleep 2
+    sleep 1
 }
 
 function download_package() {
@@ -475,68 +531,127 @@ function cleanup() {
 #Recommendation about the amount of swap:
 #https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/managing_storage_devices/getting-started-with-swap_managing-storage-devices
 function create_swap() {
-    # Check if a swap file already exists
-    if [ -e /swapfile ]; then
-        echo "Swap file already exists. Skipping creation."
+    echo "==> Checking swap configuration..."
+
+    # Better detection: any active swap or existing /swapfile
+    if swapon --show | grep -q . || [ -e /swapfile ]; then
+        echo "Swap is already configured. Skipping creation."
         return
     fi
 
-    # Get the total amount of RAM in kilobytes
     total_ram_kb=$(grep MemTotal /proc/meminfo | awk '{print $2}')
-    # Calculate the size for the swap file (assuming the same size as RAM)
-    swap_size_kb=$total_ram_kb
-    # Create a swap file
-    fallocate -l ${swap_size_kb}K /swapfile
-    # Set appropriate permissions for the swap file
+    available_disk_kb=$(df / | tail -1 | awk '{print $4}')
+
+    # Conservative sizing
+    if [[ $total_ram_kb -le $((2 * 1024 * 1024)) ]]; then
+        swap_size_kb=$total_ram_kb
+    elif [[ $total_ram_kb -le $((8 * 1024 * 1024)) ]]; then
+        swap_size_kb=$((2 * 1024 * 1024))
+    else
+        swap_size_kb=$((1 * 1024 * 1024))
+    fi
+
+    needed_kb=$((swap_size_kb + swap_size_kb / 10))  # +10% overhead
+
+    if [[ $available_disk_kb -lt $needed_kb ]]; then
+        PrintWarning "Insufficient disk space for ${swap_size_kb}K swap (need ~$((needed_kb/1024/1024 + 1)) GB free). Skipping."
+        return
+    fi
+
+    echo "==> Creating ${swap_size_kb}K swap file at /swapfile..."
+
+    if ! fallocate -l "${swap_size_kb}K" /swapfile 2>/dev/null; then
+        PrintWarning "fallocate failed. Using dd (this may take a while)..."
+        dd if=/dev/zero of=/swapfile bs=1M count=$((swap_size_kb / 1024)) status=progress || return 1
+    fi
+
     chmod 600 /swapfile
-    # Make it a swap file
     mkswap /swapfile
-    # Enable the swap file
     swapon /swapfile
-    # Add an entry to /etc/fstab to make the swap file persistent
-    echo "/swapfile none swap sw 0 0" | tee -a /etc/fstab
+
+    # Avoid duplicates in fstab
+    if ! grep -q '^/swapfile' /etc/fstab; then
+        echo "/swapfile none swap sw 0 0" | tee -a /etc/fstab
+    fi
+
+    echo "Swap file created and enabled."
 }
 
-function UpdateUbuntu() {
-    PrintGreen "Updating the system..."
-    sleep 3
-    apt-get update && sudo apt-get -y upgrade
+function InstallBaseCentos() {
+    PrintGreen "Updating system and installing base tools on CentOS-based distro..."    
+    #dnf detection (future-proofing), dnf is available on CentOS 8+, AlmaLinux, RockyLinux
+    PKG_MGR=$(command -v dnf || command -v yum) || {
+        PrintRed "No supported package manager found"
+        exit 1
+    }
+    $PKG_MGR update -y || { PrintRed "Failed to update package lists"; exit 1; }
+    #--no-install-recommends is APT-only. For YUM/DNF, we just do a standard upgrade.    
+    $PKG_MGR upgrade -y || { PrintRed "System upgrade failed"; exit 1; }
+
+    $PKG_MGR install -y ca-certificates || {
+        PrintRed "Failed to install ca-certificates"
+        exit 1
+    }
+    
+    #Install ca-certificates first, then EPEL.
+    rpm -q epel-release >/dev/null 2>&1 || $PKG_MGR install -y epel-release
+
+    $PKG_MGR install -y \
+        gnupg2 \
+        redhat-lsb-core \
+        procps-ng \
+        wget curl git zip unzip nano \
+        openssl cronie lsof jq || {
+            PrintRed "Failed to install base packages"
+            exit 1
+        }
+        
+    #The || true ensures the script continues even if crond is already enabled/started or the command fails 
+    #(e.g., in a container where systemd isn't running).
+    systemctl enable crond >/dev/null 2>&1 || true
+    systemctl start crond  >/dev/null 2>&1 || true
 }
-function BaseCentos() {
-    PrintGreen "Installing the base tools..."
-    sleep 3
-    yum install wget curl git zip unzip nano openssl cron lsof jq -y
+
+function InstallBaseUbuntu() {
+    PrintGreen "Updating system and installing base tools on Debian-based distro..."   
+    export DEBIAN_FRONTEND=noninteractive        
+    apt-get update -y || { PrintRed "Failed to update package lists"; exit 1; }
+    #Using --no-install-recommends on upgrade is a great practice, especially in automated scripts, 
+    #as it prevents potentially unwanted package creep.    
+    
+    if [[ "$AUTO_UPGRADE" == "1" ]]; then
+        apt-get -y upgrade --no-install-recommends || {
+            PrintRed "System upgrade failed"
+            exit 1
+        }   
+    fi
+
+    apt-get install -y \
+        ca-certificates \
+        gnupg \
+        lsb-release \
+        procps \
+        wget curl git zip unzip nano \
+        openssl cron lsof jq || {
+            PrintRed "Failed to install base packages"
+            exit 1
+        }
+    #Ubuntu often installs but does not start cron in minimal images. Ensure it's started.    
+    systemctl enable cron >/dev/null 2>&1 || true
+    systemctl start cron  >/dev/null 2>&1 || true
 }
-function BaseUbuntu() {
-    printf " \n"
-    echo "$(tput setaf 2)Installing the base tools....$(tput sgr0)"
-    sleep 3
-    sudo apt install wget curl git zip unzip nano openssl cron lsof jq -y
-}
+
 
 # Install the base system for the specified distribution.
-function install_base() {
-    echo "Installing the base tools including wget curl git zip unzip nano..."
-    if [[ "$distro" == "Ubuntu" || "$distro" == "Debian" ]]; then
-        UpdateUbuntu
-        BaseUbuntu
-    elif [ "$distro" == "AlmaLinux" ] || [ "$distro" == "Centos" ] || [ "$distro" == "RockyLinux" ]; then
-        BaseCentos
+function install_base() {    
+    PrintGreen "Installing base system dependencies..."
+    if [[ "$distro" == "Ubuntu" || "$distro" == "Debian" ]]; then        
+        InstallBaseUbuntu    
+    elif [[ "$distro" == "AlmaLinux" || "$distro" == "CentOS" || "$distro" == "Rocky" ]]; then
+        InstallBaseCentos
     fi
 }
 
-#Check port https://ping.eu/port-chk/check_port_usage() {
-function check_port_usage() {
-    local port="$1"
-    PrintGreen "Checking port $port..."
-
-    if ss -tuln | awk '{print $5}' | grep -q ":$port$"; then
-        echo "❌ Port $port is already in use. KiwiPanel needs this port."
-        return 1
-    fi
-
-    echo "✅ Port $port is free."
-}
 
 function verify(){
     echo "==> Verifying ownership"
@@ -563,6 +678,7 @@ function successMessage() {
 
     "$(tput setaf 2)=====================================================================================$(tput sgr0)"
     "
+    LogInfo "Installation completed successfully"
 }
 
 function installkiwipanel() {
@@ -588,8 +704,7 @@ function main() {
     installkiwipanel
     verify
     successMessage        
-    # Using the keyword `trap` to call the function cleanUp on script exit (EXIT signal)
-    #trap clean_up EXIT
+    cleanup    
 }
 
 

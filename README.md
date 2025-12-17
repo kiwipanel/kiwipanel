@@ -1,8 +1,8 @@
-## KiwiPanel scaffolding
+## KiwiPanel
 
-ALERT: WARNING: PRE-ALPHA RELEASE. DO NOT DEPLOY TO PRODUCTION.
+WARNING: PRE-ALPHA RELEASE. DO NOT DEPLOY TO PRODUCTION.
 
-KiwiPanel is a lightweight control panel designed to help you efficiently manage your LEMP (Linux, Nginx, MariaDB, PHP) and LOMP (Linux, OpenLiteSpeed, MariaDB, PHP) stack with minimal hassle.
+KiwiPanel is a lightweight control panel designed to help you efficiently manage your LOMP (Linux, OpenLiteSpeed, MariaDB, PHP) stack with minimal hassle. 
 
 ### Install
 
