@@ -103,7 +103,7 @@ function generatePassword() {
 }
 
 function generate_random_string() {
-    tr -dc 'a-z0-9' < /dev/urandom | head -c 12
+    head -c 64 /dev/urandom | tr -dc 'a-z0-9' | head -c 12
 }
 
 # Check for sudo/root privileges######################################
@@ -440,6 +440,7 @@ function linkbinary(){
 function generate_the_passcode() {
     PrintGreen "Geenerating passcode..."
     LogInfo "Entering generate_the_passcode()"
+
     local META_DIR="/opt/kiwipanel/meta"
     local PASSCODE_FILE="$META_DIR/passcode"
     mkdir -p "$META_DIR"
