@@ -1,8 +1,22 @@
 ## KiwiPanel
 
-WARNING: PRE-ALPHA RELEASE. DO NOT DEPLOY TO PRODUCTION.
+⚠️ WARNING: PRE-ALPHA RELEASE — DO NOT DEPLOY TO PRODUCTION
 
-KiwiPanel is a lightweight control panel designed to help you efficiently manage your LOMP (Linux, OpenLiteSpeed, MariaDB, PHP) stack with minimal hassle. 
+KiwiPanel is a lightweight, open-source server control panel focused on simplicity, transparency, and sane defaults. It is designed to help you manage a LOMP stack (Linux, OpenLiteSpeed, MariaDB, PHP) without the bloat, lock-in, or opaque automation commonly found in traditional hosting panels.
+
+Unlike all-in-one panels that attempt to abstract everything away, KiwiPanel aims to stay close to the underlying system. Most operations map directly to standard Linux tools and configurations, making the panel predictable, auditable, and friendly to developers and system administrators who want control rather than magic. 
+
+KiwiPanel is written primarily in Go, with a strong emphasis on:
+
+Minimal resource usage
+
+Clear system visibility
+
+Scriptable and inspectable behavior
+
+Clean separation between the panel and the server stack
+
+This project is still in early development and evolving rapidly. APIs, features, and internal design may change at any time. Feedback, issue reports, and contributions are welcome.
 
 ### Install
 

@@ -436,25 +436,10 @@ function linkbinary(){
     PrintGreen "Linked kiwipanel → /usr/local/bin/kiwipanel"
 }
 
-#------------------------------------------------------------Installing systemd service file
-function install_systemd_service() {
-    echo "==> Installing systemd service"
-    if [ -f /etc/systemd/system/kiwipanel.service ]; then
-        cp /etc/systemd/system/kiwipanel.service \
-           /etc/systemd/system/kiwipanel.service.bak
-    fi
-
-    # Copy systemd service file from extracted ZIP    
-    cp "$INSTALL_DIR/data/kiwipanel.service" "/etc/systemd/system/kiwipanel.service"
-    chmod 644 /etc/systemd/system/kiwipanel.service
-
-    systemctl daemon-reload
-    systemctl enable kiwipanel.service
-    systemctl restart kiwipanel.service
-}
-
 #------------------------------------------------------------Create passcode to protect login page
 function generate_the_passcode() {
+    PrintGreen "Geenerating passcode..."
+    LogInfo "Entering generate_the_passcode()"
     local META_DIR="/opt/kiwipanel/meta"
     local PASSCODE_FILE="$META_DIR/passcode"
     mkdir -p "$META_DIR"
@@ -467,7 +452,25 @@ function generate_the_passcode() {
     printf '%s\n' "$kiwipanel_passcode" > "$PASSCODE_FILE"
     chown kiwipanel:kiwisecure "$PASSCODE_FILE"
     chmod 640 "$PASSCODE_FILE"
-    echo "[INFO] Passcode generated."
+    PrintGreen "Passcode generated."
+}
+
+#------------------------------------------------------------Installing systemd service file
+function install_systemd_service() {    
+    PrintGreen "Installing systemd service..."
+
+    if [ -f /etc/systemd/system/kiwipanel.service ]; then
+        cp /etc/systemd/system/kiwipanel.service \
+           /etc/systemd/system/kiwipanel.service.bak
+    fi
+
+    # Copy systemd service file from extracted ZIP    
+    cp "$INSTALL_DIR/data/kiwipanel.service" "/etc/systemd/system/kiwipanel.service"
+    chmod 644 /etc/systemd/system/kiwipanel.service
+
+    systemctl daemon-reload
+    systemctl enable kiwipanel.service
+    systemctl restart kiwipanel.service
 }
 
 function install_login_banner() {
@@ -684,12 +687,12 @@ function successMessage() {
 function installkiwipanel() {
     prepare_directories
     show_version
-    download_package    
+    download_package
     extract_package
     create_group_and_user
     create_system_directories
-    fix_permissions    
-    linkbinary             
+    fix_permissions
+    linkbinary
     generate_the_passcode 
     install_systemd_service
     install_login_banner
@@ -699,14 +702,12 @@ function installkiwipanel() {
 function main() {
     welcome
     check_condition_before_install
-    create_swap    
-    install_base            
+    create_swap   
+    install_base        
     installkiwipanel
     verify
-    successMessage        
-    cleanup    
+    successMessage
+    cleanup
 }
-
-
 
 main
