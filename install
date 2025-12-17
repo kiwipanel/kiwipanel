@@ -17,17 +17,17 @@
 ######################################################################
 clear
 date
-LANG=en_US.UTF-8
+export LANG="${LANG:-en_US.UTF-8}"
+export LC_ALL="${LC_ALL:-en_US.UTF-8}"
+
 if command -v locale-gen >/dev/null 2>&1; then
     locale-gen en_US.UTF-8
 fi
 
-export LANG=en_US.UTF-8
-export LC_ALL=en_US.UTF-8
 
 # Stop on error 
 set -euo pipefail
-trap 'LogError "Script failed at line $LINENO"' ERR
+trap 'LogError "Failed: command=\"$BASH_COMMAND\" line=$LINENO"' ERR
 
 DEBUG=${DEBUG:-0}
 AUTO_UPGRADE=${AUTO_UPGRADE:-0}
@@ -93,17 +93,12 @@ function PrintRed() {
     LogError "$*"
 }
 
-
-function generatePassword() {
-    LENGTH="16"
-    if [ ! -z "$1" ]; then
-        LENGTH="$1"
-    fi
-    echo $(openssl rand -base64 64 | tr -dc a-zA-Z0-9=+ | fold -w ${LENGTH} | head -1)
-}
-
 function generate_random_string() {
-    head -c 64 /dev/urandom | tr -dc 'a-z0-9' | head -c 12
+    if command -v openssl >/dev/null 2>&1; then
+        openssl rand -hex 6
+    else
+        head -c 12 /dev/urandom | base64 | tr -dc 'a-z0-9' | head -c 12
+    fi
 }
 
 # Check for sudo/root privileges######################################
@@ -137,7 +132,7 @@ EOF
 }
 
 #Check if kiwipanel (CLI) has been installed. Stop if yes.
-if systemctl list-unit-files | grep -q "^kiwipanel.service"; then
+if systemctl status kiwipanel.service >/dev/null 2>&1; then
     PrintRed "KiwiPanel service has already been installed. Abort installation."
     PrintRed "Please install on a fresh compute or manually remove the existing service."
     exit 1
@@ -347,7 +342,8 @@ function check_condition_before_install() {
     check_os
     check_architecture
     check_panel_script
-    check_port_usage 8443
+    # If port is used, exit with error
+    check_port_usage 8443 || exit 1
 }
 
 #====================================Start Installing KiwiPanel ====================================
@@ -376,7 +372,10 @@ function download_package() {
 
 function extract_package() {
     echo "==> Extracting files"
-    unzip -oq "$TMP_ZIP" -d /opt/
+    unzip -oq "$TMP_ZIP" -d /opt/ || {
+        PrintRed "Failed to extract KiwiPanel"
+        exit 1
+    }
 }
 
 function create_group_and_user() {
