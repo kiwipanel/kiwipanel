@@ -94,10 +94,13 @@ function PrintRed() {
 }
 
 function generate_random_string() {
+    local length="${1:-12}"
     if command -v openssl >/dev/null 2>&1; then
         openssl rand -hex 6
-    else
-        head -c 12 /dev/urandom | base64 | tr -dc 'a-z0-9' | head -c 12
+    else    
+        local result
+        result=$(tr -dc 'a-z0-9' < /dev/urandom | head -c "$length" || true)
+        echo "$result"      
     fi
 }
 
@@ -436,10 +439,8 @@ function linkbinary(){
 }
 
 #------------------------------------------------------------Create passcode to protect login page
-function generate_the_passcode() {
-    PrintGreen "Geenerating passcode..."
+function generate_the_passcode() {    
     LogInfo "Entering generate_the_passcode()"
-
     local META_DIR="/opt/kiwipanel/meta"
     local PASSCODE_FILE="$META_DIR/passcode"
     mkdir -p "$META_DIR"
@@ -452,7 +453,7 @@ function generate_the_passcode() {
     printf '%s\n' "$kiwipanel_passcode" > "$PASSCODE_FILE"
     chown kiwipanel:kiwisecure "$PASSCODE_FILE"
     chmod 640 "$PASSCODE_FILE"
-    PrintGreen "Passcode generated."
+    PrintGreen "Passcode generated."    
 }
 
 #------------------------------------------------------------Installing systemd service file

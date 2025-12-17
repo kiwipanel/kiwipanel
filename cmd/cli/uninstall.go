@@ -9,6 +9,7 @@ import (
 )
 
 var keepData bool
+var force bool
 
 func init() {
 	uninstall.Flags().BoolVar(
@@ -17,6 +18,12 @@ func init() {
 		false,
 		"Keep KiwiPanel data under /opt/kiwipanel",
 	)
+	uninstall.Flags().BoolVar(
+		&force,
+		"yes",
+		false,
+		"Skip confirmation prompt",
+	)
 	rootCmd.AddCommand(uninstall)
 }
 
@@ -24,14 +31,36 @@ var uninstall = &cobra.Command{
 	Use:   "uninstall",
 	Short: "Uninstall KiwiPanel from the system",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		fmt.Println("Start uninstalling KiwiPanel...")
-
 		if os.Geteuid() != 0 {
-			return fmt.Errorf("Must be helpers.Run as root")
+			return fmt.Errorf("must be run as root")
 		}
+
+		if !force && !confirmUninstall() {
+			fmt.Println("❌ Uninstall aborted")
+			return nil
+		}
+
+		fmt.Println("Start uninstalling KiwiPanel...")
 		uninstallCmd()
 		return nil
 	},
+}
+
+func confirmUninstall() bool {
+	fmt.Println("⚠️  WARNING: KiwiPanel Uninstall")
+	fmt.Println("")
+	fmt.Println("This action will:")
+	fmt.Println("  - Stop and remove KiwiPanel services")
+	fmt.Println("  - Remove /etc/kiwipanel")
+	fmt.Println("  - Remove system user & group")
+	fmt.Println("")
+
+	fmt.Print("Type 'uninstall' to confirm: ")
+
+	var input string
+	fmt.Scanln(&input)
+
+	return input == "uninstall"
 }
 
 func uninstallCmd() {

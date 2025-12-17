@@ -12,6 +12,7 @@ tmp
 state/database
 tailwindcss
 .DS_Store
+kiwipanel/.DS_Store
 .idea
 # Test binary, built with `go test -c`
 *.test
