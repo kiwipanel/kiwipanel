@@ -422,6 +422,19 @@ function fix_permissions() {
     chmod 750 "$INSTALL_DIR/bin/kiwipanel"
 }
 
+function fix_script_permissions() {
+    echo "==> Fixing script permissions in /opt/kiwipanel/scripts"
+    local SCRIPT_DIR="$INSTALL_DIR/scripts"
+
+    if [ -d "$SCRIPT_DIR" ]; then
+        find "$SCRIPT_DIR" -type f -exec chmod 755 {} \;
+        chown -R root:root "$SCRIPT_DIR"
+        echo "✅ Scripts are now executable"
+    else
+        echo "⚠ No scripts directory found at $SCRIPT_DIR"
+    fi
+}
+
 function create_system_directories() {
     echo "==> Creating KiwiPanel system directories"
 
@@ -749,6 +762,7 @@ function installkiwipanel() {
     show_version
     download_package
     extract_package
+    fix_script_permissions 
     create_group_and_user
     create_system_directories
     fix_permissions    
