@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"bufio"
 	"fmt"
 	"os"
 
@@ -47,18 +48,18 @@ var uninstall = &cobra.Command{
 }
 
 func confirmUninstall() bool {
-	fmt.Println("⚠️  WARNING: KiwiPanel Uninstall")
+	WarningText := colorFail("⚠️  WARNING: KiwiPanel Uninstall:")
+	fmt.Println(WarningText)
 	fmt.Println("")
 	fmt.Println("This action will:")
 	fmt.Println("  - Stop and remove KiwiPanel services")
 	fmt.Println("  - Remove /etc/kiwipanel")
 	fmt.Println("  - Remove system user & group")
 	fmt.Println("")
-
 	fmt.Print("Type 'uninstall' to confirm: ")
-
-	var input string
-	fmt.Scanln(&input)
+	reader := bufio.NewReader(os.Stdin)
+	input, _ := reader.ReadString('\n')
+	input = helpers.NormalizeInput(input)
 
 	return input == "uninstall"
 }

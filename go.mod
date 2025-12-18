@@ -4,17 +4,18 @@ go 1.24.0
 
 require (
 	github.com/bitfield/script v0.22.0
+	github.com/fatih/color v1.18.0
 	github.com/glebarez/sqlite v1.10.0
 	github.com/go-chi/chi/v5 v5.2.3
 	github.com/pelletier/go-toml/v2 v2.2.4
 	github.com/shirou/gopsutil/v3 v3.23.12
 	github.com/spf13/cobra v1.8.0
+	golang.org/x/text v0.32.0
 	gorm.io/gorm v1.25.5
 )
 
 require (
 	github.com/dustin/go-humanize v1.0.1 // indirect
-	github.com/fatih/color v1.18.0 // indirect
 	github.com/glebarez/go-sqlite v1.21.2 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/google/uuid v1.3.0 // indirect

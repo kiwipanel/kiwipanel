@@ -31,6 +31,7 @@ var serveCmd = &cobra.Command{
 		}
 		app.Boot("production")
 		log.Println("KiwiPanel server starting (systemd)")
-		return nil
+		select {} // KEEP PROCESS ALIVE
+		// return nil
 	},
 }

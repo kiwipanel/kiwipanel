@@ -15,7 +15,7 @@ func init() {
 
 var dev = &cobra.Command{
 	Use:   "dev",
-	Short: "Run development server",
+	Short: "Run development server. Does not work on installed servers.",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		fmt.Println("Running development server...")
 		if helpers.IsInstalled() {

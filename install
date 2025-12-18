@@ -396,18 +396,30 @@ function create_group_and_user() {
 
 
 #------------------------------------------------------------Fixing ownership and permissions (because root created files beforehand
+# function fix_permissions() {
+#     echo "==> Fixing ownership and permissions"
+#     chown -R kiwipanel:kiwisecure "$INSTALL_DIR"
+
+#     find "$INSTALL_DIR" -type d -exec chmod 750 {} \;
+#     find "$INSTALL_DIR" -type f -exec chmod 640 {} \;
+
+#     if [ -f "$INSTALL_DIR/bin/kiwipanel" ]; then
+#         chmod 750 "$INSTALL_DIR/bin/kiwipanel"
+#     else
+#         echo "⚠️ Warning: binary not found at $INSTALL_DIR/bin/kiwipanel"
+#     fi
+# }
+
 function fix_permissions() {
     echo "==> Fixing ownership and permissions"
+    # Ownership
     chown -R kiwipanel:kiwisecure "$INSTALL_DIR"
-
+    # Directories: rwx for owner+group
     find "$INSTALL_DIR" -type d -exec chmod 750 {} \;
+    # Files: rw for owner+group
     find "$INSTALL_DIR" -type f -exec chmod 640 {} \;
-
-    if [ -f "$INSTALL_DIR/bin/kiwipanel" ]; then
-        chmod 750 "$INSTALL_DIR/bin/kiwipanel"
-    else
-        echo "⚠️ Warning: binary not found at $INSTALL_DIR/bin/kiwipanel"
-    fi
+    # Real binary: executable by owner+group only
+    chmod 750 "$INSTALL_DIR/bin/kiwipanel"
 }
 
 function create_system_directories() {
@@ -427,16 +439,58 @@ function create_system_directories() {
     chmod 750 /var/lib/kiwipanel
 }
 
-function linkbinary(){
-    if [ ! -f "$INSTALL_DIR/bin/kiwipanel" ]; then
-        PrintRed "Binary not found at $INSTALL_DIR/bin/kiwipanel"
-        exit 1
-    fi
+# function linkbinary(){
+#     if [ ! -f "$INSTALL_DIR/bin/kiwipanel" ]; then
+#         PrintRed "Binary not found at $INSTALL_DIR/bin/kiwipanel"
+#         exit 1
+#     fi
 
-    chmod +x "$INSTALL_DIR/bin/kiwipanel"
-    ln -sf "$INSTALL_DIR/bin/kiwipanel" /usr/local/bin/kiwipanel
-    PrintGreen "Linked kiwipanel → /usr/local/bin/kiwipanel"
+#     chmod +x "$INSTALL_DIR/bin/kiwipanel"
+#     ln -sf "$INSTALL_DIR/bin/kiwipanel" /usr/local/bin/kiwipanel
+#     PrintGreen "Success: Linked kiwipanel globally."
+# }
+
+function install_wrapper() {
+    PrintGreen "Installing kiwipanel CLI wrapper"
+
+    cat > /usr/local/bin/kiwipanel <<'EOF'
+#!/bin/bash
+set -e
+
+REAL_BIN="/opt/kiwipanel/bin/kiwipanel"
+
+if [ ! -e "$REAL_BIN" ]; then
+  echo "KiwiPanel error: binary not found at $REAL_BIN" >&2
+  exit 1
+fi
+
+if [ ! -r "$REAL_BIN" ]; then
+  echo "KiwiPanel error: binary is not readable" >&2
+  exit 1
+fi
+
+if [ ! -x "$REAL_BIN" ]; then
+  echo "KiwiPanel error: binary is not executable" >&2
+  echo "Fix: chmod 750 $REAL_BIN" >&2
+  exit 1
+fi
+
+OWNER=$(stat -c '%U:%G' "$REAL_BIN")
+if [ "$OWNER" != "kiwipanel:kiwisecure" ]; then
+  echo "KiwiPanel error: invalid binary ownership ($OWNER)" >&2
+  echo "Expected: kiwipanel:kiwisecure" >&2
+  exit 1
+fi
+
+exec "$REAL_BIN" "$@"
+EOF
+
+    chown root:root /usr/local/bin/kiwipanel
+    chmod 755 /usr/local/bin/kiwipanel
+
+    PrintGreen "kiwipanel CLI installed successfully"
 }
+
 
 #------------------------------------------------------------Create passcode to protect login page
 function generate_the_passcode() {    
@@ -453,25 +507,22 @@ function generate_the_passcode() {
     printf '%s\n' "$kiwipanel_passcode" > "$PASSCODE_FILE"
     chown kiwipanel:kiwisecure "$PASSCODE_FILE"
     chmod 640 "$PASSCODE_FILE"
-    PrintGreen "Passcode generated."    
+    PrintGreen "Success: Passcode generated."    
 }
 
 #------------------------------------------------------------Installing systemd service file
-function install_systemd_service() {    
-    PrintGreen "Installing systemd service..."
-
+function install_systemd_service() {        
     if [ -f /etc/systemd/system/kiwipanel.service ]; then
         cp /etc/systemd/system/kiwipanel.service \
            /etc/systemd/system/kiwipanel.service.bak
     fi
-
     # Copy systemd service file from extracted ZIP    
     cp "$INSTALL_DIR/data/kiwipanel.service" "/etc/systemd/system/kiwipanel.service"
     chmod 644 /etc/systemd/system/kiwipanel.service
-
     systemctl daemon-reload
     systemctl enable kiwipanel.service
-    systemctl restart kiwipanel.service
+    systemctl start kiwipanel.service
+    PrintGreen "Success: Installing systemd service."
 }
 
 function install_login_banner() {
@@ -693,7 +744,8 @@ function installkiwipanel() {
     create_group_and_user
     create_system_directories
     fix_permissions
-    linkbinary
+    # linkbinary
+    install_wrapper
     generate_the_passcode 
     install_systemd_service
     install_login_banner

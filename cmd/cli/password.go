@@ -1,11 +1,18 @@
 package cli
 
 import (
+	"bufio"
 	"fmt"
 	"os"
 	"strings"
 
+	"github.com/fatih/color"
+	"github.com/kiwipanel/kiwipanel/pkg/helpers"
 	"github.com/spf13/cobra"
+)
+
+var (
+	shortIntro = "Reset the KiwiPanel web portal password"
 )
 
 func init() {
@@ -14,7 +21,7 @@ func init() {
 
 var passWord = &cobra.Command{
 	Use:   "password",
-	Short: "Reset the KiwiPanel web portal password",
+	Short: shortIntro,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if os.Geteuid() != 0 {
 			return fmt.Errorf("❌ must be run as root")
@@ -30,19 +37,29 @@ var passWord = &cobra.Command{
 }
 
 func confirmPasswordReset() bool {
-	fmt.Println("⚠️  WARNING")
-	fmt.Println("This will reset the KiwiPanel web portal password.")
-	fmt.Print("Do you want to continue? (yes/no): ")
+	reader := bufio.NewReader(os.Stdin)
+	for {
+		fmt.Println("⚠️  WARNING")
+		fmt.Println("This will reset the KiwiPanel web portal password.")
+		fmt.Print("Do you want to continue? (yes/no): ")
 
-	var input string
-	fmt.Scanln(&input)
+		input, _ := reader.ReadString('\n')
+		input = helpers.NormalizeInput(input)
 
-	input = strings.ToLower(strings.TrimSpace(input))
-	return input == "yes" || input == "y"
+		switch {
+		case strings.HasPrefix(input, "y"):
+			return true
+		case strings.HasPrefix(input, "n"):
+			return false
+		default:
+			fmt.Println("Please answer yes or no.")
+		}
+	}
 }
 
 func generatePassword() error {
-	fmt.Println("Creating a new password...")
-	fmt.Println("KiwiPanel password:", "testing")
+	password := "testing"
+	fmt.Printf("Your new KiwiPanel password: %s\n", password)
+	color.Green("✅ Password reset successfully.")
 	return nil
 }

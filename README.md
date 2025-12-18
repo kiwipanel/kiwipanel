@@ -49,8 +49,9 @@ Kiwipanel supports the following operating systems, given that OpenLiteSpeed sup
 - https://echarts.apache.org/
 - https://github.com/google/ngx_brotli
 
-
 ### References
+- https://github.com/imthenachoman/How-To-Secure-A-Linux-Server
+- https://archive.is/8CRGS
 - https://docs.openlitespeed.org/installation/script/
 - https://github.com/litespeedtech/ols1clk/blob/master/ols1clk.sh
 - https://github.com/vernu/vps-audit

@@ -18,13 +18,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var (
-	colorOK    = color.New(color.FgGreen).SprintFunc()
-	colorFail  = color.New(color.FgRed).SprintFunc()
-	colorWarn  = color.New(color.FgYellow).SprintFunc()
-	colorTitle = color.New(color.Bold, color.FgCyan).SprintFunc()
-)
-
 type CheckResult struct {
 	Name    string `json:"name"`
 	OK      bool   `json:"ok"`
@@ -54,8 +47,13 @@ func init() {
 
 var checkCmd = &cobra.Command{
 	Use:   "check",
-	Short: "Run system checks (services, config, ports, directories)",
+	Short: "Run system checks (services, config, ports, directories, security)",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		fmt.Println()
+		fmt.Println(colorTitle("KiwiPanel System Check"))
+		fmt.Println(colorTitle("======================"))
+		fmt.Println(colorOK("→ Running system checks, please wait...\n"))
+
 		report := runAllChecks(checkFix)
 
 		// compute health percentage
@@ -490,15 +488,6 @@ func svcRunning(name string) bool {
 		return strings.TrimSpace(string(out)) == "active"
 	}
 	return false
-}
-
-func portFree(port int) (bool, string) {
-	ln, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
-	if err != nil {
-		return false, err.Error()
-	}
-	ln.Close()
-	return true, ""
 }
 
 func checkPort(port int) (bool, string) {
