@@ -439,25 +439,20 @@ function create_system_directories() {
     chmod 750 /var/lib/kiwipanel
 }
 
-# function linkbinary(){
-#     if [ ! -f "$INSTALL_DIR/bin/kiwipanel" ]; then
-#         PrintRed "Binary not found at $INSTALL_DIR/bin/kiwipanel"
-#         exit 1
-#     fi
-
-#     chmod +x "$INSTALL_DIR/bin/kiwipanel"
-#     ln -sf "$INSTALL_DIR/bin/kiwipanel" /usr/local/bin/kiwipanel
-#     PrintGreen "Success: Linked kiwipanel globally."
-# }
 
 function install_wrapper() {
     PrintGreen "Installing kiwipanel CLI wrapper"
 
     cat > /usr/local/bin/kiwipanel <<'EOF'
 #!/bin/bash
-set -e
+set -uo pipefail
+
+if [ "$(id -u)" -ne 0 ]; then
+  echo "Note: cannot run the script without root privileges" >&2
+fi
 
 REAL_BIN="/opt/kiwipanel/bin/kiwipanel"
+BASE_DIR="/opt/kiwipanel"
 
 if [ ! -e "$REAL_BIN" ]; then
   echo "KiwiPanel error: binary not found at $REAL_BIN" >&2
@@ -477,8 +472,22 @@ fi
 
 OWNER=$(stat -c '%U:%G' "$REAL_BIN")
 if [ "$OWNER" != "kiwipanel:kiwisecure" ]; then
-  echo "KiwiPanel error: invalid binary ownership ($OWNER)" >&2
-  echo "Expected: kiwipanel:kiwisecure" >&2
+  echo "KiwiPanel error: invalid binary ownership: $OWNER" >&2
+  echo >&2
+  echo "This binary must be owned by the service account." >&2
+  echo >&2
+  echo "Fix (run as root):" >&2
+  echo "  chown kiwipanel:kiwisecure $REAL_BIN" >&2
+  echo "  chmod 750 $REAL_BIN" >&2
+  echo >&2  
+  exit 1
+fi
+
+if [ ! -x "$BASE_DIR" ]; then
+  echo "KiwiPanel error: cannot access working directory $BASE_DIR" >&2
+  echo "Fix (run as root):" >&2
+  echo "  chown -R kiwipanel:kiwisecure $BASE_DIR" >&2
+  echo "  chmod 750 $BASE_DIR" >&2  
   exit 1
 fi
 
@@ -487,7 +496,6 @@ EOF
 
     chown root:root /usr/local/bin/kiwipanel
     chmod 755 /usr/local/bin/kiwipanel
-
     PrintGreen "kiwipanel CLI installed successfully"
 }
 
@@ -743,8 +751,7 @@ function installkiwipanel() {
     extract_package
     create_group_and_user
     create_system_directories
-    fix_permissions
-    # linkbinary
+    fix_permissions    
     install_wrapper
     generate_the_passcode 
     install_systemd_service
