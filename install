@@ -473,9 +473,13 @@ function fix_script_permissions() {
     local SCRIPT_DIR="$INSTALL_DIR/scripts"
 
     if [ -d "$SCRIPT_DIR" ]; then
-        find "$SCRIPT_DIR" -type f -exec chmod 755 {} \;
-        chown -R root:root "$SCRIPT_DIR"
-        echo "✅ Scripts are now executable"
+        # Make scripts executable by owner and group only
+        find "$SCRIPT_DIR" -type f -exec chmod 750 {} \;
+        
+        # Change ownership to kiwipanel user and kiwisecure group
+        chown -R kiwipanel:kiwisecure "$SCRIPT_DIR"
+        
+        echo "✅ Scripts are now executable by kiwipanel user"
     else
         echo "⚠ No scripts directory found at $SCRIPT_DIR"
     fi
@@ -589,6 +593,86 @@ function install_systemd_service() {
     systemctl enable kiwipanel.service
     systemctl start kiwipanel.service
     PrintGreen "Success: Installing systemd service."
+}
+function install_login_banner() {
+    local PROFILE_D="/etc/profile.d/kiwipanel.sh"
+    # Ensure /etc/profile.d exists
+    mkdir -p /etc/profile.d
+    chmod 755 /etc/profile.d
+    cat > "$PROFILE_D" <<'EOF'
+#!/bin/bash
+# =========================================================
+# KiwiPanel login banner
+# Created by KiwiPanel installer
+# =========================================================
+
+# Exit if shell is not interactive
+[[ $- != *i* ]] && return
+
+# Restrict execution to root or kiwipanel user
+if [[ $EUID -ne 0 && "$(whoami)" != "kiwipanel" ]]; then
+    return
+fi
+
+# Ensure kiwipanel CLI exists
+KIWIPANEL_BIN=$(command -v kiwipanel 2>/dev/null)
+[ -z "$KIWIPANEL_BIN" ] && return
+
+# Color codes
+GREEN='\033[0;32m'
+CYAN='\033[0;36m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+# Box settings
+BOX_WIDTH=64
+TEXT="KiwiPanel System Information"
+
+# Remove color codes for length calculation
+PLAIN_TEXT=$(echo -e "$TEXT" | sed 's/\x1b\[[0-9;]*m//g')
+TEXT_LEN=${#PLAIN_TEXT}
+
+# Calculate padding
+PADDING_LEFT=$(( (BOX_WIDTH - 2 - TEXT_LEN) / 2 ))
+PADDING_RIGHT=$(( BOX_WIDTH - 2 - TEXT_LEN - PADDING_LEFT ))
+
+# Get system information
+VERSION_FILE="/opt/kiwipanel/meta/version"
+KIWI_VERSION="unknown"
+[ -f "$VERSION_FILE" ] && KIWI_VERSION=$(cat "$VERSION_FILE" 2>/dev/null || echo "unknown")
+
+TOTAL_MEM=$(free -h | awk '/^Mem:/ {print $2}')
+USED_MEM=$(free -h | awk '/^Mem:/ {print $3}')
+MEM_PERCENT=$(free | awk '/^Mem:/ {printf "%.1f", ($3/$2) * 100}')
+
+TOTAL_DISK=$(df -h / | awk 'NR==2 {print $2}')
+USED_DISK=$(df -h / | awk 'NR==2 {print $3}')
+DISK_PERCENT=$(df / | awk 'NR==2 {print $5}' | tr -d '%')
+
+UPTIME=$(uptime -p | sed 's/up //')
+LOAD_AVG=$(uptime | awk -F'load average:' '{print $2}' | xargs)
+
+# Print banner
+echo
+echo -e "${GREEN}╔$(printf '═%.0s' $(seq 1 $((BOX_WIDTH-2))))╗${NC}"
+printf "${GREEN}║${NC}%*s${CYAN}%s${NC}%*s${GREEN}║${NC}\n" $PADDING_LEFT "" "$TEXT" $PADDING_RIGHT ""
+echo -e "${GREEN}╚$(printf '═%.0s' $(seq 1 $((BOX_WIDTH-2))))╝${NC}"
+echo
+echo -e "  ${YELLOW}Version:${NC}      KiwiPanel ${KIWI_VERSION}"
+echo -e "  ${YELLOW}Uptime:${NC}       ${UPTIME}"
+echo -e "  ${YELLOW}Load Avg:${NC}     ${LOAD_AVG}"
+echo
+echo -e "  ${YELLOW}Memory:${NC}       ${USED_MEM} / ${TOTAL_MEM} (${MEM_PERCENT}%)"
+echo -e "  ${YELLOW}Disk:${NC}         ${USED_DISK} / ${TOTAL_DISK} (${DISK_PERCENT}%)"
+echo
+"$KIWIPANEL_BIN" status
+echo
+echo -e "${CYAN}Type 'kiwipanel' to open the KiwiPanel administration menu.${NC}"
+echo
+EOF
+
+    chown root:root "$PROFILE_D"
+    chmod 644 "$PROFILE_D"
 }
 
 function install_login_banner() {
@@ -801,16 +885,15 @@ function successMessage() {
     "
     LogInfo "Installation completed successfully"
 }
-
 function installkiwipanel() {
     prepare_directories
     show_version
     download_package
     extract_package
-    fix_script_permissions 
-    create_group_and_user
+    create_group_and_user      # ✅ Create user/group FIRST
     create_system_directories
-    fix_permissions    
+    fix_permissions            # ✅ Then fix general permissions
+    fix_script_permissions     # ✅ Then fix script permissions
     install_wrapper
     generate_the_passcode 
     install_systemd_service
