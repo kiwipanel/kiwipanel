@@ -1,0 +1,46 @@
+{
+  "schema": 1,
+  "latest": "0.1.2",
+  "releases": [
+    {
+      "version": "0.1.0",
+      "release_date": "2025-12-20",
+      "os": "linux",
+      "arch": "amd64",
+      "download_url": "https://github.com/kiwipanel/releases/kiwipanel_0.1.0_linux_amd64",
+      "notes": "Initial preview release"
+    },
+    {
+      "version": "0.1.1",
+      "release_date": "2025-12-27",
+      "os": "linux",
+      "arch": "amd64",
+      "download_url": "https://github.com/kiwipanel/releases/kiwipanel_0.1.1_linux_amd64",
+      "notes": "Testing version"
+    },
+    {
+      "version": "0.1.2",
+      "release_date": "2026-01-05",
+      "os": "linux",
+      "arch": "amd64",
+      "download_url": "https://github.com/kiwipanel/releases/kiwipanel_0.1.2_linux_amd64",
+      "notes": "Bug fixes and improvements"
+    },
+    {
+      "version": "0.1.1",
+      "release_date": "2025-12-27",
+      "os": "linux",
+      "arch": "arm64",
+      "download_url": "https://github.com/kiwipanel/releases/kiwipanel_0.1.1_linux_arm64",
+      "notes": "Testing version"
+    },
+    {
+      "version": "0.1.2",
+      "release_date": "2026-01-05",
+      "os": "linux",
+      "arch": "arm64",
+      "download_url": "https://github.com/kiwipanel/releases/kiwipanel_0.1.2_linux_arm64",
+      "notes": "Bug fixes and improvements"
+    }
+  ]
+}

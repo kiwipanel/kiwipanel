@@ -355,15 +355,75 @@ function prepare_directories() {
     mkdir -p "$INSTALL_DIR"
 }
 
-function show_version(){
-    LATEST=$(curl -s https://raw.githubusercontent.com/kiwipanel/kiwipanel/refs/heads/main/version.json)
-    VERSION=$(echo "$LATEST" | jq -r '.version')
-    URL=$(echo "$LATEST" | jq -r '.download_url')
-    NOTES=$(echo "$LATEST" | jq -r '.notes')
-    echo "Latest Version: $VERSION"    
-    echo "Note: $NOTES"
+
+function show_version() {
+    META_DIR="/opt/kiwipanel/meta"
+    VERSION_FILE="$META_DIR/version"
+    RELEASES_FILE="$META_DIR/releases.json"
+
+    RELEASES_URL="https://raw.githubusercontent.com/kiwipanel/kiwipanel/refs/heads/main/releases.json"
+
+    mkdir -p "$META_DIR"
+
+    # Fetch releases catalog
+    RELEASES_JSON=$(curl -fsSL "$RELEASES_URL")
+
+    # Cache full releases.json locally (replaceable cache)
+    echo "$RELEASES_JSON" > "$RELEASES_FILE"
+
+    # Detect OS
+    OS="linux"
+
+    # Detect architecture
+    ARCH=$(uname -m)
+    case "$ARCH" in
+        x86_64) ARCH="amd64" ;;
+        aarch64|arm64) ARCH="arm64" ;;
+        *)
+            echo "Unsupported architecture: $ARCH"
+            exit 1
+            ;;
+    esac
+
+    # Get latest version string
+    LATEST_VERSION=$(jq -r '.latest' <<<"$RELEASES_JSON")
+
+    # Select matching release
+    RELEASE=$(jq -r \
+        --arg os "$OS" \
+        --arg arch "$ARCH" \
+        --arg ver "$LATEST_VERSION" '
+        .releases[]
+        | select(.version==$ver and .os==$os and .arch==$arch)
+    ' <<<"$RELEASES_JSON")
+
+    if [[ -z "$RELEASE" ]]; then
+        echo "No compatible release found for $OS/$ARCH (version $LATEST_VERSION)"
+        exit 1
+    fi
+
+    VERSION=$(jq -r '.version' <<<"$RELEASE")
+    URL=$(jq -r '.download_url' <<<"$RELEASE")
+    NOTES=$(jq -r '.notes' <<<"$RELEASE")
+    RELEASE_DATE=$(jq -r '.release_date' <<<"$RELEASE")
+
+    # Write plain-text version pointer (authoritative)
+    echo "$VERSION" > "$VERSION_FILE"
+
+    echo "Latest Version : $VERSION"
+    echo "Release Date  : $RELEASE_DATE"
+    echo "Architecture  : $ARCH"
+    echo "Notes         : $NOTES"
+
+    # Export for installer/update steps
+    export KIWIPANEL_VERSION="$VERSION"
+    export KIWIPANEL_DOWNLOAD_URL="$URL"
+    export KIWIPANEL_ARCH="$ARCH"
+    export KIWIPANEL_OS="$OS"
+
     sleep 1
 }
+
 
 function download_package() {
     echo "==> Downloading KiwiPanel package"
@@ -396,20 +456,6 @@ function create_group_and_user() {
 
 
 #------------------------------------------------------------Fixing ownership and permissions (because root created files beforehand
-# function fix_permissions() {
-#     echo "==> Fixing ownership and permissions"
-#     chown -R kiwipanel:kiwisecure "$INSTALL_DIR"
-
-#     find "$INSTALL_DIR" -type d -exec chmod 750 {} \;
-#     find "$INSTALL_DIR" -type f -exec chmod 640 {} \;
-
-#     if [ -f "$INSTALL_DIR/bin/kiwipanel" ]; then
-#         chmod 750 "$INSTALL_DIR/bin/kiwipanel"
-#     else
-#         echo "⚠️ Warning: binary not found at $INSTALL_DIR/bin/kiwipanel"
-#     fi
-# }
-
 function fix_permissions() {
     echo "==> Fixing ownership and permissions"
     # Ownership
@@ -517,8 +563,7 @@ EOF
 function generate_the_passcode() {    
     LogInfo "Entering generate_the_passcode()"
     local META_DIR="/opt/kiwipanel/meta"
-    local PASSCODE_FILE="$META_DIR/passcode"
-    mkdir -p "$META_DIR"
+    local PASSCODE_FILE="$META_DIR/passcode"    
     if [[ -f "$PASSCODE_FILE" ]]; then
         kiwipanel_passcode=$(tr -d '\n' < "$PASSCODE_FILE")
         echo "[INFO] Passcode loaded."
