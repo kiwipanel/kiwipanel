@@ -675,41 +675,6 @@ EOF
     chmod 644 "$PROFILE_D"
 }
 
-function install_login_banner() {
-    local PROFILE_D="/etc/profile.d/kiwipanel.sh"
-
-    #install is a GNU command
-    install -d -m 755 /etc/profile.d
-
-    cat > "$PROFILE_D" <<'EOF'
-#!/bin/bash
-# =========================================================
-# KiwiPanel login banner
-# Created by KiwiPanel installer
-# =========================================================
-
-# Exit if shell is not interactive
-[[ $- != *i* ]] && return
-
-# Restrict execution to root or kiwipanel user
-if [[ $EUID -ne 0 && "$USER" != "kiwipanel" ]]; then
-    return
-fi
-
-# Ensure kiwipanel CLI exists
-KIWIPANEL_BIN="$(command -v kiwipanel 2>/dev/null)" || return
-
-echo
-"$KIWIPANEL_BIN" status
-echo
-echo "Type 'kiwipanel' to open the KiwiPanel administration menu."
-echo
-EOF
-
-    chown root:root "$PROFILE_D"
-    chmod 644 "$PROFILE_D"
-}
-
 function disable_default_motd() {
     echo "==> Normalizing login banner experience"
 
