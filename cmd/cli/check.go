@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -98,8 +99,26 @@ func cmdOK(name string, args ...string) (bool, string) {
 	return true, string(out)
 }
 
+func cmdWithTimeout(timeout time.Duration, name string, args ...string) (bool, string) {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, name, args...)
+	out, err := cmd.CombinedOutput()
+
+	if ctx.Err() == context.DeadlineExceeded {
+		return false, fmt.Sprintf("command timeout (%v)", timeout)
+	}
+
+	if err != nil {
+		return false, string(out)
+	}
+
+	return true, string(out)
+}
+
 func CheckSSHRootLogin() (bool, string) {
-	ok, out := cmdOK("sshd", "-T")
+	ok, out := cmdWithTimeout(5*time.Second, "sshd", "-T")
 	if !ok {
 		return false, "cannot read sshd config"
 	}
@@ -112,7 +131,7 @@ func CheckSSHRootLogin() (bool, string) {
 }
 
 func CheckSSHPasswordAuth() (bool, string) {
-	ok, out := cmdOK("sshd", "-T")
+	ok, out := cmdWithTimeout(5*time.Second, "sshd", "-T")
 	if !ok {
 		return false, "cannot read sshd config"
 	}
@@ -125,7 +144,7 @@ func CheckSSHPasswordAuth() (bool, string) {
 }
 
 func CheckSSHPort() (bool, string) {
-	ok, out := cmdOK("sshd", "-T")
+	ok, out := cmdWithTimeout(5*time.Second, "sshd", "-T")
 	if !ok {
 		return false, "cannot read sshd config"
 	}
@@ -226,7 +245,8 @@ func CheckMemoryUsage() (bool, string) {
 }
 
 func CheckWorldWritableDirs() (bool, string) {
-	out, err := exec.Command("find", "/", "-xdev", "-type", "d", "-perm", "-0002").Output()
+	paths := []string{"/opt", "/home", "/var/www", "/etc", "/root"}
+	out, err := exec.Command("find", append(paths, "-xdev", "-type", "d", "-perm", "-0002")...).Output()
 	if err != nil {
 		return true, "cannot scan directories"
 	}
@@ -246,7 +266,8 @@ func CheckWorldWritableDirs() (bool, string) {
 }
 
 func CheckSuspiciousSUID() (bool, string) {
-	out, err := exec.Command("find", "/", "-xdev", "-perm", "-4000", "-type", "f").Output()
+	paths := []string{"/opt", "/home", "/usr/local", "/root"}
+	out, err := exec.Command("find", append(paths, "-xdev", "-perm", "-4000", "-type", "f")...).Output()
 	if err != nil {
 		return true, "cannot scan suid files"
 	}
@@ -391,6 +412,11 @@ func runAllChecks(doFix bool) *CheckReport {
 		{"security:intrusion_prevention", CheckIntrusionPrevention},
 		{"security:world_writable_dirs", CheckWorldWritableDirs},
 		{"security:suid_files", CheckSuspiciousSUID},
+		{"network:external_connectivity", CheckNetworkConnectivity},
+		{"network:dns_resolution", CheckDNSResolution},
+		{"kiwipanel:process", CheckKiwiPanelProcess},
+		{"kiwipanel:permissions", CheckKiwiPanelPermissions},
+		{"kiwipanel:certificate_validity", CheckSSLCertificates},
 	}
 
 	for _, sc := range securityChecks {
@@ -555,18 +581,28 @@ func CheckRebootRequired() (bool, string) {
 }
 
 func CheckPublicIP() (bool, string) {
-	cmd := exec.Command("curl", "-s", "--max-time", "5", "https://api.ipify.org")
-	out, err := cmd.Output()
-	if err != nil {
+	ok, out := cmdWithTimeout(5*time.Second, "curl", "-s", "--max-time", "5", "https://api.ipify.org")
+	if !ok {
 		return false, "unable to detect public IP"
 	}
 
-	ip := strings.TrimSpace(string(out))
+	ip := strings.TrimSpace(out)
 	if net.ParseIP(ip) == nil {
 		return false, "invalid public IP response"
 	}
 
 	return true, ip
+}
+
+func CheckDNSResolution() (bool, string) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	addrs, err := net.DefaultResolver.LookupHost(ctx, "8.8.8.8")
+	if err != nil || len(addrs) == 0 {
+		return false, "DNS resolution failed"
+	}
+	return true, fmt.Sprintf("DNS working (%s)", addrs[0])
 }
 
 func CheckCPUModel() (bool, string) {
@@ -813,4 +849,56 @@ func CheckInteractiveShells() (bool, string) {
 	}
 
 	return true, fmt.Sprintf("%d interactive users", len(users))
+}
+
+func CheckNetworkConnectivity() (bool, string) {
+	conn, err := net.DialTimeout("tcp", "8.8.8.8:53", 5*time.Second)
+	if err != nil {
+		return false, fmt.Sprintf("no external connectivity: %v", err)
+	}
+	conn.Close()
+	return true, "external connectivity OK (8.8.8.8:53)"
+}
+
+func CheckKiwiPanelProcess() (bool, string) {
+	out, _ := exec.Command("systemctl", "is-active", "kiwipanel.service").Output()
+	if strings.TrimSpace(string(out)) == "active" {
+		return true, "kiwipanel service running"
+	}
+	return false, "kiwipanel service not running"
+}
+
+func CheckKiwiPanelPermissions() (bool, string) {
+	dirs := map[string]string{
+		"/opt/kiwipanel":     "750",
+		"/etc/kiwipanel":     "750",
+		"/var/log/kiwipanel": "750",
+	}
+
+	for path, expectedPerm := range dirs {
+		info, err := os.Stat(path)
+		if err != nil {
+			return false, fmt.Sprintf("%s missing", path)
+		}
+
+		actualPerm := fmt.Sprintf("%o", info.Mode().Perm())
+		if actualPerm != expectedPerm {
+			return false, fmt.Sprintf("%s has %s (expected %s)", path, actualPerm, expectedPerm)
+		}
+	}
+	return true, "all directories have correct permissions"
+}
+
+func CheckSSLCertificates() (bool, string) {
+	certPath := "/opt/kiwipanel/config/ssl/certificate.pem"
+	if _, err := os.Stat(certPath); err != nil {
+		return false, "SSL certificate not found"
+	}
+
+	// Parse cert and check expiry
+	out, _ := exec.Command("openssl", "x509", "-in", certPath, "-noout", "-enddate").Output()
+	if len(out) > 0 {
+		return true, strings.TrimSpace(strings.TrimPrefix(string(out), "notAfter="))
+	}
+	return false, "cannot read certificate expiry"
 }

@@ -30,6 +30,20 @@ func MaintenanceMiddleware(next http.Handler) http.Handler {
 	})
 }
 
+// Verify passcode only for login page access
+func PasscodeMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		passcode := chi.URLParam(r, "passcode")
+		kiwipanelPasscode, _ := helpers.LoadGatePasscode()
+		if passcode != kiwipanelPasscode {
+			w.WriteHeader(http.StatusNotFound)
+			w.Write([]byte("Not found"))
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
 func Middlewares(r chi.Router) {
 	r.Use(MaintenanceMiddleware)
 	r.Use(middleware.Logger)

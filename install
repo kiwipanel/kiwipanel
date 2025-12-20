@@ -604,17 +604,15 @@ function install_login_banner() {
 # =========================================================
 # KiwiPanel login banner
 # Created by KiwiPanel installer
+# Authors: Vuong Nguyen <vuong@kiwipanel.org>
 # =========================================================
 
-# Exit if shell is not interactive
 [[ $- != *i* ]] && return
 
-# Restrict execution to root or kiwipanel user
 if [[ $EUID -ne 0 && "$(whoami)" != "kiwipanel" ]]; then
     return
 fi
 
-# Ensure kiwipanel CLI exists
 KIWIPANEL_BIN=$(command -v kiwipanel 2>/dev/null)
 [ -z "$KIWIPANEL_BIN" ] && return
 
@@ -622,52 +620,171 @@ KIWIPANEL_BIN=$(command -v kiwipanel 2>/dev/null)
 GREEN='\033[0;32m'
 CYAN='\033[0;36m'
 YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
+RED='\033[0;31m'
+BLUE='\033[0;34m'
+GRAY='\033[0;90m'
+NC='\033[0m'
 
-# Box settings
-BOX_WIDTH=64
+BOX_WIDTH=70
 TEXT="KiwiPanel System Information"
-
-# Remove color codes for length calculation
 PLAIN_TEXT=$(echo -e "$TEXT" | sed 's/\x1b\[[0-9;]*m//g')
 TEXT_LEN=${#PLAIN_TEXT}
-
-# Calculate padding
 PADDING_LEFT=$(( (BOX_WIDTH - 2 - TEXT_LEN) / 2 ))
 PADDING_RIGHT=$(( BOX_WIDTH - 2 - TEXT_LEN - PADDING_LEFT ))
 
-# Get system information
 VERSION_FILE="/opt/kiwipanel/meta/version"
 KIWI_VERSION="unknown"
 [ -f "$VERSION_FILE" ] && KIWI_VERSION=$(cat "$VERSION_FILE" 2>/dev/null || echo "unknown")
 
+# Memory info
 TOTAL_MEM=$(free -h | awk '/^Mem:/ {print $2}')
 USED_MEM=$(free -h | awk '/^Mem:/ {print $3}')
-MEM_PERCENT=$(free | awk '/^Mem:/ {printf "%.1f", ($3/$2) * 100}')
+MEM_PERCENT=$(free | awk '/^Mem:/ {printf "%.0f", ($3/$2) * 100}')
 
+# Disk info
 TOTAL_DISK=$(df -h / | awk 'NR==2 {print $2}')
 USED_DISK=$(df -h / | awk 'NR==2 {print $3}')
 DISK_PERCENT=$(df / | awk 'NR==2 {print $5}' | tr -d '%')
 
+# Swap info
+SWAP_TOTAL=$(free -h | awk '/^Swap:/ {print $2}')
+SWAP_USED=$(free -h | awk '/^Swap:/ {print $3}')
+SWAP_PERCENT=$(free | awk '/^Swap:/ {if($2>0) printf "%.0f", ($3/$2) * 100; else print "0"}')
+
+# System info
 UPTIME=$(uptime -p | sed 's/up //')
 LOAD_AVG=$(uptime | awk -F'load average:' '{print $2}' | xargs)
+IPADDR=$(hostname -I | awk '{print $1}')
+INSTALL_DATE=$(stat -c %y /opt/kiwipanel 2>/dev/null | cut -d' ' -f1)
 
-# Print banner
+# Service status
+if systemctl is-active --quiet kiwipanel.service 2>/dev/null; then
+    SERVICE_STATUS="${GREEN}●${NC} Running"
+    SERVICE_UPTIME=$(systemctl show kiwipanel.service -p ActiveEnterTimestamp --value 2>/dev/null | xargs -I{} date -d "{}" +%s 2>/dev/null || echo "0")
+    if [ "$SERVICE_UPTIME" != "0" ]; then
+        CURRENT_TIME=$(date +%s)
+        SERVICE_RUNTIME=$((CURRENT_TIME - SERVICE_UPTIME))
+        if [ $SERVICE_RUNTIME -ge 86400 ]; then
+            SERVICE_RUNTIME_STR=$(printf '%dd %dh' $((SERVICE_RUNTIME/86400)) $((SERVICE_RUNTIME%86400/3600)))
+        elif [ $SERVICE_RUNTIME -ge 3600 ]; then
+            SERVICE_RUNTIME_STR=$(printf '%dh %dm' $((SERVICE_RUNTIME/3600)) $((SERVICE_RUNTIME%3600/60)))
+        else
+            SERVICE_RUNTIME_STR=$(printf '%dm' $((SERVICE_RUNTIME/60)))
+        fi
+    else
+        SERVICE_RUNTIME_STR="just started"
+    fi
+else
+    SERVICE_STATUS="${RED}●${NC} Stopped"
+    SERVICE_RUNTIME_STR="N/A"
+fi
+
+# Function to draw colored usage bar
+draw_bar() {
+    local PERCENT=$1
+    local BAR_WIDTH=20
+    local FILLED=$(( PERCENT * BAR_WIDTH / 100 ))
+    local EMPTY=$(( BAR_WIDTH - FILLED ))
+    
+    # Choose color based on usage
+    local COLOR
+    if [ "$PERCENT" -lt 60 ]; then
+        COLOR="$GREEN"
+    elif [ "$PERCENT" -lt 80 ]; then
+        COLOR="$YELLOW"
+    else
+        COLOR="$RED"
+    fi
+    
+    # Build the bar
+    local BAR=""
+    for ((i=0; i<FILLED; i++)); do BAR+="▰"; done
+    local EMPTY_BAR=""
+    for ((i=0; i<EMPTY; i++)); do EMPTY_BAR+="▱"; done
+    
+    echo -ne "${COLOR}${BAR}${GRAY}${EMPTY_BAR}${NC} ${PERCENT}%"
+}
+
+# Function to pad string to fixed width
+pad_string() {
+    local str="$1"
+    local width=$2
+    printf "%-${width}s" "$str"
+}
+
+# Display banner
 echo
 echo -e "${GREEN}╔$(printf '═%.0s' $(seq 1 $((BOX_WIDTH-2))))╗${NC}"
 printf "${GREEN}║${NC}%*s${CYAN}%s${NC}%*s${GREEN}║${NC}\n" $PADDING_LEFT "" "$TEXT" $PADDING_RIGHT ""
 echo -e "${GREEN}╚$(printf '═%.0s' $(seq 1 $((BOX_WIDTH-2))))╝${NC}"
 echo
-echo -e "  ${YELLOW}Version:${NC}      KiwiPanel ${KIWI_VERSION}"
+echo -e "  ${YELLOW}Version:${NC}      ${KIWI_VERSION}"
+echo -e "  ${YELLOW}Service:${NC}      ${SERVICE_STATUS} (uptime: ${SERVICE_RUNTIME_STR})"
 echo -e "  ${YELLOW}Uptime:${NC}       ${UPTIME}"
 echo -e "  ${YELLOW}Load Avg:${NC}     ${LOAD_AVG}"
+echo -e "  ${YELLOW}IP Address:${NC}   ${IPADDR}"
+echo -e "  ${YELLOW}Installed:${NC}    ${INSTALL_DATE}"
 echo
-echo -e "  ${YELLOW}Memory:${NC}       ${USED_MEM} / ${TOTAL_MEM} (${MEM_PERCENT}%)"
-echo -e "  ${YELLOW}Disk:${NC}         ${USED_DISK} / ${TOTAL_DISK} (${DISK_PERCENT}%)"
+
+# Memory usage
+MEM_LABEL=$(pad_string "Memory:" 8)
+MEM_USAGE=$(pad_string "${USED_MEM} / ${TOTAL_MEM}" 15)
+echo -ne "  ${YELLOW}${MEM_LABEL}${NC}  ${MEM_USAGE}  "
+draw_bar "$MEM_PERCENT"
 echo
+
+# Disk usage
+DISK_LABEL=$(pad_string "Disk:" 8)
+DISK_USAGE=$(pad_string "${USED_DISK} / ${TOTAL_DISK}" 15)
+echo -ne "  ${YELLOW}${DISK_LABEL}${NC}  ${DISK_USAGE}  "
+draw_bar "$DISK_PERCENT"
+echo
+
+# Swap usage (only show if swap exists)
+if [ "$SWAP_TOTAL" != "0B" ] && [ -n "$SWAP_TOTAL" ] && [ "$SWAP_TOTAL" != "0" ]; then
+    SWAP_LABEL=$(pad_string "Swap:" 8)
+    SWAP_USAGE=$(pad_string "${SWAP_USED} / ${SWAP_TOTAL}" 15)
+    echo -ne "  ${YELLOW}${SWAP_LABEL}${NC}  ${SWAP_USAGE}  "
+    draw_bar "$SWAP_PERCENT"
+    echo
+fi
+
+# Warning indicators
+WARNINGS=0
+echo
+if [ "$MEM_PERCENT" -gt 90 ]; then
+    echo -e "  ${RED}⚠ Warning: Memory usage is critically high (${MEM_PERCENT}%)${NC}"
+    WARNINGS=$((WARNINGS + 1))
+fi
+
+if [ "$DISK_PERCENT" -gt 90 ]; then
+    echo -e "  ${RED}⚠ Warning: Disk space is critically low (${DISK_PERCENT}%)${NC}"
+    WARNINGS=$((WARNINGS + 1))
+fi
+
+if [ "$DISK_PERCENT" -gt 80 ] && [ "$DISK_PERCENT" -le 90 ]; then
+    echo -e "  ${YELLOW}⚠ Notice: Disk space is running low (${DISK_PERCENT}%)${NC}"
+    WARNINGS=$((WARNINGS + 1))
+fi
+
+if ! systemctl is-active --quiet kiwipanel.service 2>/dev/null; then
+    echo -e "  ${RED}⚠ Warning: KiwiPanel service is not running!${NC}"
+    WARNINGS=$((WARNINGS + 1))
+fi
+
+# Add spacing only if warnings were shown
+if [ $WARNINGS -gt 0 ]; then
+    echo
+fi
+
 "$KIWIPANEL_BIN" status
 echo
-echo -e "${CYAN}Type 'kiwipanel' to open the KiwiPanel administration menu.${NC}"
+echo -e "${CYAN}Quick commands:${NC}"
+echo -e "  ${GRAY}kiwipanel status${NC}      # Show service status"
+echo -e "  ${GRAY}kiwipanel check${NC}       # Check your current VPS status"
+echo -e "  ${GRAY}kiwipanel hide${NC}        # Temporarily hide the KiwiPanel web interface"
+echo
+echo -e "${CYAN}Type '${NC}kiwipanel${CYAN}' to open the administration menu.${NC}"
 echo
 EOF
 
