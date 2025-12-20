@@ -117,6 +117,7 @@ KIWI_VERSION="latest"
 INSTALL_DIR="/opt/kiwipanel"
 ZIP_URL="https://github.com/kiwipanel/kiwipanel/releases/download/v0.1.0/kiwipanel.zip"
 TMP_ZIP="/tmp/kiwipanel.zip"
+INSTALL_MARKER="/opt/kiwipanel/meta/.installed"
 # Welcome########################################################
 function ShowLogo {
     local kiwipanel_text=$(
@@ -564,21 +565,32 @@ EOF
 
 
 #------------------------------------------------------------Create passcode to protect login page
-function generate_the_passcode() {    
-    LogInfo "Entering generate_the_passcode()"
+function generate_the_passcode() {
     local META_DIR="/opt/kiwipanel/meta"
-    local PASSCODE_FILE="$META_DIR/passcode"    
-    if [[ -f "$PASSCODE_FILE" ]]; then
+    local PASSCODE_FILE="$META_DIR/passcode"
+    local INSTALL_MARKER="$META_DIR/.installed"
+
+    mkdir -p "$META_DIR"
+
+    if [[ -f "$INSTALL_MARKER" && -f "$PASSCODE_FILE" ]]; then
         kiwipanel_passcode=$(tr -d '\n' < "$PASSCODE_FILE")
-        echo "[INFO] Passcode loaded."
-        return 0
+        PrintGreen "Existing passcode preserved."
+        return
     fi
+
     kiwipanel_passcode=$(generate_random_string)
     printf '%s\n' "$kiwipanel_passcode" > "$PASSCODE_FILE"
+
     chown kiwipanel:kiwisecure "$PASSCODE_FILE"
     chmod 640 "$PASSCODE_FILE"
-    PrintGreen "Success: Passcode generated."    
+
+    touch "$INSTALL_MARKER"
+    chown kiwipanel:kiwisecure "$INSTALL_MARKER"
+    chmod 640 "$INSTALL_MARKER"
+
+    PrintGreen "New passcode generated."
 }
+
 
 #------------------------------------------------------------Installing systemd service file
 function install_systemd_service() {        
