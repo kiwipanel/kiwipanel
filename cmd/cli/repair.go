@@ -13,8 +13,9 @@ func init() {
 }
 
 var repairCmd = &cobra.Command{
-	Use:   "repair",
-	Short: "Repair KiwiPanel file ownership, permissions, and service",
+	Use:    "repair",
+	Hidden: true,
+	Short:  "Repair KiwiPanel file ownership, permissions, and service",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		script := "/opt/kiwipanel/scripts/repair.sh"
 
