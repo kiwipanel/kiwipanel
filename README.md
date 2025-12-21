@@ -6,20 +6,16 @@ KiwiPanel is a lightweight, open-source server control panel focused on simplici
 
 Unlike all-in-one panels that attempt to abstract everything away, KiwiPanel aims to stay close to the underlying system. Most operations map directly to standard Linux tools and configurations, making the panel predictable, auditable, and friendly to developers and system administrators who want control rather than magic.
 
+### Built for Developers & VPS Users
+
 KiwiPanel is written primarily in Go, with a strong emphasis on:
 - Minimal resource usage
 - Clear system visibility
 - Scriptable and inspectable behavior
 - Clean separation between the panel and the server stack
-
-### Built for Developers & VPS Users
-
-KiwiPanel is designed first and foremost for:
 - Developers who want full visibility into how their server works  
 - VPS users who prefer lightweight tooling over heavy abstractions  
 - System administrators who value reproducibility, auditability, and control  
-
-The panel does **not** attempt to hide Linux behind layers of automation. Instead, it provides a clear interface on top of standard system components, allowing you to learn, debug, and customize your server with confidence.
 
 ### No Lock-In, Ever
 
@@ -30,8 +26,6 @@ A core design principle of KiwiPanel is **zero lock-in**:
 - No proprietary configuration formats
 - No background agents required for runtime operation
 - All changes are applied using standard Linux configs and services
-
-KiwiPanel does not replace your system — it works *with* it.
 
 ### Practical Server Tasks, Done Transparently
 
@@ -86,7 +80,7 @@ Kiwipanel supports the following operating systems, given that OpenLiteSpeed sup
 
 ## Roadmap
 
-KiwiPanel is intentionally developed in small, auditable steps. The roadmap below reflects the current direction, but priorities may shift based on real-world usage and community feedback.
+The roadmap below reflects the current direction, but priorities may shift based on real-world usage and community feedback.
 
 ### Phase 0 — Foundation (Current / Pre-Alpha)
 **Goal:** Establish a clean, inspectable core with minimal abstraction.
@@ -96,9 +90,9 @@ KiwiPanel is intentionally developed in small, auditable steps. The roadmap belo
 - [x] CLI framework (`kiwipanel`) for system-level operations  
 - [x] SQLite-based local state (no external dependencies)  
 - [x] Basic system inspection (CPU, memory, disk, OS)  
-- [x] OpenLiteSpeed + MariaDB + PHP stack provisioning  
-- [x] Clear separation between panel logic and system tooling  
-- [ ] Internal logging and structured error handling (in progress)
+- [ ] OpenLiteSpeed + MariaDB + PHP stack provisioning (in progress)
+- [ ] Clear separation between panel logic and system tooling  
+- [ ] Internal logging and structured error handling 
 
 ⚠️ Not production-ready. Breaking changes expected.
 
@@ -192,6 +186,7 @@ If a feature cannot be explained clearly or mapped directly to system behavior, 
 
 ### References
 - https://github.com/imthenachoman/How-To-Secure-A-Linux-Server
+- https://github.com/trimstray/test-your-sysadmin-skills
 - https://archive.is/8CRGS
 - https://docs.openlitespeed.org/installation/script/
 - https://github.com/litespeedtech/ols1clk/blob/master/ols1clk.sh

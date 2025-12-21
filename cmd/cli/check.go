@@ -200,6 +200,80 @@ func CheckIntrusionPrevention() (bool, string) {
 	return false, "no intrusion prevention system (fail2ban || crowdsec) running"
 }
 
+func CheckDiskUsageUpdate() (bool, string) {
+	type mountStat struct {
+		Mount string
+		Used  int
+		Avail string
+	}
+
+	importantMounts := []string{"/", "/var", "/opt", "/home"}
+	var stats []mountStat
+	critical := false
+	warning := false
+
+	for _, m := range importantMounts {
+		if _, err := os.Stat(m); err != nil {
+			continue // mount does not exist
+		}
+
+		out, err := exec.Command("df", "-P", m).Output()
+		if err != nil {
+			continue
+		}
+
+		lines := strings.Split(string(out), "\n")
+		if len(lines) < 2 {
+			continue
+		}
+
+		fields := strings.Fields(lines[1])
+		if len(fields) < 6 {
+			continue
+		}
+
+		usedPct := atoiSafe(strings.TrimSuffix(fields[4], "%"))
+		avail := fields[3]
+
+		stats = append(stats, mountStat{
+			Mount: m,
+			Used:  usedPct,
+			Avail: avail,
+		})
+
+		if usedPct >= 85 {
+			critical = true
+		} else if usedPct >= 70 {
+			warning = true
+		}
+	}
+
+	if len(stats) == 0 {
+		return true, "no relevant mount points detected"
+	}
+
+	var parts []string
+	for _, s := range stats {
+		parts = append(parts, fmt.Sprintf(
+			"%s:%d%% (%s free)",
+			s.Mount,
+			s.Used,
+			s.Avail,
+		))
+	}
+
+	summary := strings.Join(parts, ", ")
+
+	if critical {
+		return false, "disk critical: " + summary
+	}
+	if warning {
+		return true, "disk warning: " + summary
+	}
+
+	return true, "disk OK: " + summary
+}
+
 func CheckDiskUsage() (bool, string) {
 	out, err := exec.Command("df", "-P", "/").Output()
 	if err != nil {
@@ -394,6 +468,7 @@ func runAllChecks(doFix bool) *CheckReport {
 		{"system:load_average", CheckLoadAverage},
 		{"system:uptime_since", CheckUptimeSince},
 		{"system:disk_usage", CheckDiskUsage},
+		{"system:disk_usage_update", CheckDiskUsageUpdate},
 		{"system:memory_usage", CheckMemoryUsage},
 		{"system:users", CheckSystemUsers},
 		{"security:uid0_users", CheckUID0Users},

@@ -5,7 +5,6 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/kiwipanel/kiwipanel/config"
-	"github.com/kiwipanel/kiwipanel/internal/modules/providers/routes"
 )
 
 func handleLoginPage(w http.ResponseWriter, r *http.Request) {
@@ -41,6 +40,46 @@ func handleLoginPage(w http.ResponseWriter, r *http.Request) {
 	</html>
 	`
 
+	w.Header().Set("Content-Type", "text/html")
+	w.Write([]byte(html))
+}
+
+func handleTestPage(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
+	html := `
+	<!DOCTYPE html>
+	<html>	
+	<body>
+		<div class="container">
+			<h1>Test page</h1>			
+		</div>
+	</body>
+	</html>
+	`
+	w.Header().Set("Content-Type", "text/html")
+	w.Write([]byte(html))
+}
+
+func handleAdminPage(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
+	html := `
+	<!DOCTYPE html>
+	<html>	
+	<body>
+		<div class="container">
+			<h1>Test page</h1>			
+		</div>
+	</body>
+	</html>
+	`
 	w.Header().Set("Content-Type", "text/html")
 	w.Write([]byte(html))
 }
@@ -95,19 +134,36 @@ func NewRoutes(appconfig *config.AppConfig) http.Handler {
 	r := chi.NewRouter()
 	Middlewares(r)
 
+	r.Get("/test", handleTestPage)
+	r.Get("/admin", handleAdminPage)
+
 	r.Route("/{passcode}", func(r chi.Router) {
 		r.Use(PasscodeMiddleware)
 		r.Get("/", handleLoginPage)
 		r.Post("/login", handleLoginSubmit)
 	})
 
-	routes.ProvidersRoutes(r, appconfig)
+	// routes.ProvidersRoutes(r, appconfig)
 
 	r.NotFound(http.HandlerFunc(NewNotFoundHandler))
 	return r
 }
 
 func NewNotFoundHandler(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("Page not found at KiwiPanel"))
+	notFound := `<!DOCTYPE html>
+<html style="height:100%">
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+<title> 404 Not Found
+</title><style>@media (prefers-color-scheme:dark){body{background-color:#000!important}}</style></head>
+<body style="color: #444; margin:0;font: normal 14px/20px Arial, Helvetica, sans-serif; height:100%; background-color: #fff;">
+<div style="height:auto; min-height:100%; ">     <div style="text-align: center; width:800px; margin-left: -400px; position:absolute; top: 30%; left:50%;">
+        <h1 style="margin:0; font-size:150px; line-height:150px; font-weight:bold;">404</h1>
+<h2 style="margin-top:20px;font-size: 30px;">Not Found
+</h2>
+<p>Sorry! The resource requested could not be found on this server.</p>
+</div></div></body></html>`
+	w.Header().Set("Content-Type", "text/html")
+	w.Write([]byte(notFound))
 
 }

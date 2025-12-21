@@ -18,11 +18,11 @@ var (
 )
 
 func init() {
-	rootCmd.AddCommand(logCmd)
 	logCmd.Flags().BoolVarP(&logFollow, "follow", "f", false, "Follow log output")
 	logCmd.Flags().IntVarP(&logLines, "lines", "n", 100, "Number of lines to show")
 	logCmd.Flags().StringVar(&logSince, "since", "", "Show logs since time (e.g. 1h, today)")
 	logCmd.Flags().StringVar(&logUntil, "until", "", "Show logs until time")
+	rootCmd.AddCommand(logCmd)
 }
 
 var logCmd = &cobra.Command{

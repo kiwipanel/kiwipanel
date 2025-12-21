@@ -18,11 +18,7 @@ var show = &cobra.Command{
 	Short: "Turn on the KiwiPanel web interface",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		fmt.Println("Turning on KiwiPanel web interface...")
-		if helpers.IsInstalled() {
-			metaPath = hiddenFlagProduction
-		} else {
-			metaPath = hiddenFlagDev
-		}
+		metaPath := helpers.MaintenanceFlagPath()
 		if err := os.Remove(metaPath); err != nil && !os.IsNotExist(err) {
 			return fmt.Errorf("failed to show KiwiPanel: %w", err)
 		}

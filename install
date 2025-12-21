@@ -141,7 +141,7 @@ if systemctl status kiwipanel.service >/dev/null 2>&1; then
     PrintRed "Please install on a fresh compute or manually remove the existing service."
     exit 1
 else
-    PrintGreen "Thanks for choosing KiwiPanel. Starting installation."
+    PrintGreen "Thanks for choosing KiwiPanel!"
 fi
 
 # Detect the system's architecture

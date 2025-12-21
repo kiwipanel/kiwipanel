@@ -14,12 +14,6 @@ var force bool
 
 func init() {
 	uninstall.Flags().BoolVar(
-		&keepData,
-		"keep-data",
-		false,
-		"Keep KiwiPanel data under /opt/kiwipanel",
-	)
-	uninstall.Flags().BoolVar(
 		&force,
 		"yes",
 		false,
@@ -82,14 +76,10 @@ func uninstallCmd() {
 	// 5. Remove configuration
 	_ = os.RemoveAll("/etc/kiwipanel")
 
-	// 6. Remove runtime data (optional)
-	if !keepData {
-		_ = os.RemoveAll("/opt/kiwipanel")
-		_ = os.RemoveAll("/var/log/kiwipanel")
-		fmt.Println("✔ Runtime data removed")
-	} else {
-		fmt.Println("ℹ Runtime data preserved (--keep-data)")
-	}
+	// 6. Remove runtime data
+	_ = os.RemoveAll("/opt/kiwipanel")
+	_ = os.RemoveAll("/var/log/kiwipanel")
+	fmt.Println("✔ Runtime data removed")
 
 	// 7. Remove user and group safely
 	if helpers.UserExists("kiwipanel") {
