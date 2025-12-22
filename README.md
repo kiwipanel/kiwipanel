@@ -88,8 +88,8 @@ The roadmap below reflects the current direction, but priorities may shift based
 - [x] Installer bootstrap for supported Linux distributions  
 - [x] Go-based backend architecture  
 - [x] CLI framework (`kiwipanel`) for system-level operations  
-- [x] SQLite-based local state (no external dependencies)  
-- [x] Basic system inspection (CPU, memory, disk, OS)  
+- [x] SQLite-based local state 
+- [x] Thorough system inspection (CPU, memory, disk, OS...) with the command `kiwipanel check`  
 - [ ] OpenLiteSpeed + MariaDB + PHP stack provisioning (in progress)
 - [ ] Clear separation between panel logic and system tooling  
 - [ ] Internal logging and structured error handling 

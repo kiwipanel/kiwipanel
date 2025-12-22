@@ -1,7 +1,6 @@
 package app
 
 import (
-	"fmt"
 	"net/http"
 	"os"
 
@@ -30,8 +29,6 @@ func PasscodeMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		passcode := chi.URLParam(r, "passcode")
 		kiwipanelPasscode, _ := helpers.LoadGatePasscode()
-		fmt.Println("Loaded passcode:", kiwipanelPasscode)
-		fmt.Println("Provided passcode:", passcode)
 		if passcode != kiwipanelPasscode {
 			w.WriteHeader(http.StatusNotFound)
 

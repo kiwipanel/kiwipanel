@@ -133,18 +133,20 @@ func isValidToken(token string) bool {
 func NewRoutes(appconfig *config.AppConfig) http.Handler {
 	r := chi.NewRouter()
 	Middlewares(r)
-
-	r.Get("/test", handleTestPage)
-	r.Get("/admin", handleAdminPage)
-
-	r.Route("/{passcode}", func(r chi.Router) {
-		r.Use(PasscodeMiddleware)
-		r.Get("/", handleLoginPage)
-		r.Post("/login", handleLoginSubmit)
+	// Public routes with specific middleware
+	r.Group(func(r chi.Router) {
+		r.Get("/test", handleTestPage)
+		r.Get("/admin", handleAdminPage)
 	})
-
+	// Public routes with PasscodeMiddleware middleware
+	r.Group(func(r chi.Router) {
+		r.Route("/{passcode}", func(r chi.Router) {
+			r.Use(PasscodeMiddleware)
+			r.Get("/", handleLoginPage)
+			r.Post("/login", handleLoginSubmit)
+		})
+	})
 	// routes.ProvidersRoutes(r, appconfig)
-
 	r.NotFound(http.HandlerFunc(NewNotFoundHandler))
 	return r
 }
