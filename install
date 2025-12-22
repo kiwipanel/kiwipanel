@@ -3,7 +3,7 @@
 #                  KiwiPanel - a LOMP stack on Linux                 #
 #                                                                    #
 #                Author: Vuong Nguyen and contributors               #
-#                  Website: https://kiwipanel.com                    #
+#                  Website: https://kiwipanel.org                    #
 #                  @since: 2025                                      #
 #              Please do not remove copyright. Thanks!               #
 #  Please do not copy under any circumstance for commercial reason!  #
@@ -73,6 +73,15 @@ function PrintGreen() {
     local content="${1}"
     echo ""
     printf "${GREEN}${content}${NC}\n"
+    LogInfo "$*"
+}
+
+function PrintInfo() {
+    local CYAN='\033[0;36m'
+    local NC='\033[0m'
+    local content="${1}"
+    echo ""
+    printf "${CYAN}${content}${NC}\n"
     LogInfo "$*"
 }
 
@@ -196,7 +205,7 @@ function welcome() {
     echo "            Auto Install & Optimize LOMP Stack            "
     printf "${GREEN}========================================================\n${NC}"
     echo ""
-    PrintGreen "Installing KiwiPanel..."
+    PrintInfo "Installing KiwiPanel..."
     sleep 3
 }
 
@@ -224,7 +233,7 @@ HOSTVN="var/hostvn/hostvn.conf"
 AAPANEL="/www/server/panel"
 
 function check_panel_script() {
-    PrintGreen "Checking the existing script or panel... You should install KiwiPanel on a fresh compute!"
+    PrintInfo "==> Checking the existing script or panel. You should install KiwiPanel on a fresh compute!"
     sleep 2
 
     # aaPanel
@@ -287,7 +296,7 @@ function check_panel_script() {
 
 
 function check_architecture() {
-    PrintGreen "Checking ARCHITECTURE... Kiwipanel supports 64 bits system only!"
+    PrintInfo "Checking architechture. Kiwipanel supports 64 bits system only!"
     sleep 2
     #Check the ARCHITECTURE
     #Ref: https://raw.githubusercontent.com/runtipi/runtipi/master/scripts/install.sh
@@ -299,49 +308,97 @@ function check_architecture() {
         exit 1
     fi
 }
-function check_os() {
-    PrintGreen "Checking the OS... Kiwipanel currently supports Ubuntu and Debian only!"
-    sleep 2
-    echo "Your current Kernel: ${kernel_version}"
-    echo "Your current Linux distro: ${distro}"
-    if [[ "$distro" == "Ubuntu" || "$distro" == "Debian" ]]; then        
-        if [[ "$distro" == "Debian" ]]; then
-            DebianCheck=$(cat /etc/debian_version)
-            # Comparing string
-            if [[ "${DebianCheck}" < "10" ]]; then
-                echo "Warning: Debian ${DebianCheck} is not supported by KiwiPanel, use Debian 11, 12 or 13 to install"
-                exit 1
-            fi
 
-        fi
+# =========================
+# OS Detection (refactored)
+# =========================
 
-        if [[ "$distro" == "Ubuntu" ]]; then
-            UbuntuCheck=$(cat /etc/issue | grep Ubuntu | awk '{print $2}' | cut -f 1 -d '.')
-            if [ "${UbuntuCheck}" -lt "18" ]; then
-                echo "Ubuntu ${UbuntuCheck} is not supported by KiwiPanel, use Ubuntu20/22 to install"
-                exit 1
-            fi
-        fi
-    else
-        PrintRed "The current version of KiwiPanel only works on Ubuntu or Debian."
+load_os_release() {
+    local file="${1:-/etc/os-release}"
+
+    if [[ ! -f "$file" ]]; then
+        PrintRed "Cannot detect operating system (missing /etc/os-release)"
         exit 1
     fi
+
+    # shellcheck disable=SC1090
+    source "$file"
+
+    OS_ID="$ID"
+    OS_VERSION_MAJOR="${VERSION_ID%%.*}"
+    OS_LIKE="${ID_LIKE:-}"
+    OS_NAME="${PRETTY_NAME:-$NAME}"
+}
+
+check_os() {
+    PrintInfo "Checking operating system compatibility..."
+    sleep 1
+
+    load_os_release
+
+    PrintInfo "Detected OS: ${OS_NAME}"
+    PrintInfo "Kernel: $(uname -r)"
+
+    # ---- Reject CentOS Stream explicitly ----
+    if [[ "${OS_ID}" == "centos" && "${NAME}" =~ Stream ]]; then
+        PrintRed "CentOS Stream is not supported."
+        PrintRed "Please use Rocky Linux or AlmaLinux instead."
+        exit 1
+    fi
+
+    case "${OS_ID}" in
+        debian)
+            if (( OS_VERSION_MAJOR < 11 )); then
+                PrintRed "Debian ${VERSION_ID} is not supported."
+                PrintRed "Please use Debian 11, 12, or 13."
+                exit 1
+            fi
+            ;;
+        ubuntu)
+            if (( OS_VERSION_MAJOR < 22 )); then
+                PrintRed "Ubuntu ${VERSION_ID} is not supported."
+                PrintRed "Please use Ubuntu 22.04 or newer."
+                exit 1
+            fi
+            ;;
+        rhel|rocky|almalinux|ol|cloudlinux|vzlinux)
+            if (( OS_VERSION_MAJOR < 8 )); then
+                PrintRed "RHEL-compatible ${VERSION_ID} is not supported."
+                PrintRed "Please use version 8 or newer."
+                exit 1
+            fi
+            ;;
+        *)
+            if [[ "${OS_LIKE}" == *"rhel"* ]]; then
+                if (( OS_VERSION_MAJOR < 8 )); then
+                    PrintRed "RHEL-compatible ${VERSION_ID} is not supported."
+                    exit 1
+                fi
+            else
+                PrintRed "Unsupported operating system."
+                PrintRed "Supported: Debian 11+, Ubuntu 22.04+, Rocky/Alma/RHEL 8+"
+                exit 1
+            fi
+            ;;
+    esac
+
+    PrintGreen "Operating system is supported ✔"
 }
 
 #Check port https://ping.eu/port-chk/check_port_usage() {
 function check_port_usage() {
     local port="$1"
-    PrintGreen "Checking port $port..."
+    PrintInfo "Checking port $port..."
     if ss -tuln | awk '{print $5}' | grep -q ":$port$"; then
         echo "❌ Port $port is already in use. KiwiPanel needs this port."
         return 1
     fi
-    echo "✅ Port $port is free."
+    PrintGreen "✅ Port $port is free."
 }
 
 
 function check_condition_before_install() {
-    PrintGreen "Evaluating your VPS before installing KiwiPanel....."
+    PrintInfo "Evaluating your VPS before installing KiwiPanel....."
     sleep 2
     check_os
     check_architecture
@@ -352,7 +409,7 @@ function check_condition_before_install() {
 
 #====================================Start Installing KiwiPanel ====================================
 function prepare_directories() {
-    echo "==> Preparing directories"
+    PrintInfo "==> Preparing directories"
     mkdir -p "$INSTALL_DIR"
 }
 
@@ -427,7 +484,7 @@ function show_version() {
 
 
 function download_package() {
-    echo "==> Downloading KiwiPanel package"
+    PrintInfo "==> Downloading KiwiPanel package"
     if ! curl -L --fail "$ZIP_URL" -o "$TMP_ZIP"; then
         echo "❌ Failed to download KiwiPanel package. Exiting."
         exit 1
@@ -435,7 +492,7 @@ function download_package() {
 }
 
 function extract_package() {
-    echo "==> Extracting files"
+    PrintInfo "==> Extracting files"
     unzip -oq "$TMP_ZIP" -d /opt/ || {
         PrintRed "Failed to extract KiwiPanel"
         exit 1
@@ -443,9 +500,9 @@ function extract_package() {
 }
 
 function create_group_and_user() {
-    echo "==> Creating kiwisecure group"
+    PrintInfo "==> Creating kiwisecure group"
     getent group kiwisecure >/dev/null || groupadd kiwisecure    
-    echo "==> Creating kiwipanel user"
+    PrintInfo "==> Creating kiwipanel user"
     if ! id kiwipanel >/dev/null 2>&1; then
         useradd --system \
             --no-create-home \
@@ -458,7 +515,7 @@ function create_group_and_user() {
 
 #------------------------------------------------------------Fixing ownership and permissions (because root created files beforehand
 function fix_permissions() {
-    echo "==> Fixing ownership and permissions"
+    PrintInfo "==> Setting proper ownership and permissions"
     # Ownership
     chown -R kiwipanel:kiwisecure "$INSTALL_DIR"
     # Directories: rwx for owner+group
@@ -470,7 +527,7 @@ function fix_permissions() {
 }
 
 function fix_script_permissions() {
-    echo "==> Fixing script permissions in /opt/kiwipanel/scripts"
+    PrintInfo "==> Setting script permissions in /opt/kiwipanel/scripts"
     local SCRIPT_DIR="$INSTALL_DIR/scripts"
 
     if [ -d "$SCRIPT_DIR" ]; then
@@ -480,23 +537,20 @@ function fix_script_permissions() {
         # Change ownership to kiwipanel user and kiwisecure group
         chown -R kiwipanel:kiwisecure "$SCRIPT_DIR"
         
-        echo "✅ Scripts are now executable by kiwipanel user"
+        PrintGreen "✅ Scripts are now executable by kiwipanel user"
     else
-        echo "⚠ No scripts directory found at $SCRIPT_DIR"
+        PrintInfo "⚠ No scripts directory found at $SCRIPT_DIR"
     fi
 }
 
 function create_system_directories() {
-    echo "==> Creating KiwiPanel system directories"
-
+    PrintInfo "==> Creating KiwiPanel system directories"
     mkdir -p /etc/kiwipanel/{sites,users}
     mkdir -p /var/log/kiwipanel
     mkdir -p /var/lib/kiwipanel
-
     chown -R kiwipanel:kiwisecure /etc/kiwipanel
     chown -R kiwipanel:kiwisecure /var/log/kiwipanel
     chown -R kiwipanel:kiwisecure /var/lib/kiwipanel
-
     chmod 750 /etc/kiwipanel
     chmod 750 /etc/kiwipanel/sites /etc/kiwipanel/users
     chmod 750 /var/log/kiwipanel
@@ -505,14 +559,15 @@ function create_system_directories() {
 
 
 function install_wrapper() {
-    PrintGreen "Installing kiwipanel CLI wrapper"
+    PrintInfo "Installing kiwipanel CLI wrapper"
 
     cat > /usr/local/bin/kiwipanel <<'EOF'
 #!/bin/bash
 set -uo pipefail
 
 if [ "$(id -u)" -ne 0 ]; then
-  echo "Note: cannot run the script without root privileges" >&2
+  echo "Error: kiwipanel requires root privileges" >&2
+  exit 1
 fi
 
 REAL_BIN="/opt/kiwipanel/bin/kiwipanel"
@@ -560,7 +615,7 @@ EOF
 
     chown root:root /usr/local/bin/kiwipanel
     chmod 755 /usr/local/bin/kiwipanel
-    PrintGreen "kiwipanel CLI installed successfully"
+    PrintGreen "KiwiPananel CLI installed successfully"
 }
 
 
@@ -805,7 +860,7 @@ EOF
 }
 
 function disable_default_motd() {
-    echo "==> Normalizing login banner experience"
+    PrintInfo "==> Normalizing login banner experience"
 
     # Debian / Ubuntu
     if [ -d /etc/update-motd.d ]; then
@@ -830,7 +885,7 @@ function cleanup() {
 #Recommendation about the amount of swap:
 #https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/managing_storage_devices/getting-started-with-swap_managing-storage-devices
 function create_swap() {
-    echo "==> Checking swap configuration..."
+    PrintInfo "==> Checking swap configuration..."
 
     # Better detection: any active swap or existing /swapfile
     if swapon --show | grep -q . || [ -e /swapfile ]; then
@@ -857,7 +912,7 @@ function create_swap() {
         return
     fi
 
-    echo "==> Creating ${swap_size_kb}K swap file at /swapfile..."
+    PrintInfo "==> Creating ${swap_size_kb}K swap file at /swapfile..."
 
     if ! fallocate -l "${swap_size_kb}K" /swapfile 2>/dev/null; then
         PrintWarning "fallocate failed. Using dd (this may take a while)..."
@@ -873,11 +928,11 @@ function create_swap() {
         echo "/swapfile none swap sw 0 0" | tee -a /etc/fstab
     fi
 
-    echo "Swap file created and enabled."
+    PrintGreen "Swap file created and enabled."
 }
 
 function InstallBaseCentos() {
-    PrintGreen "Updating system and installing base tools on CentOS-based distro..."    
+    PrintInfo "Updating system and installing base tools on CentOS-based distro..."    
     #dnf detection (future-proofing), dnf is available on CentOS 8+, AlmaLinux, RockyLinux
     PKG_MGR=$(command -v dnf || command -v yum) || {
         PrintRed "No supported package manager found"
@@ -912,7 +967,7 @@ function InstallBaseCentos() {
 }
 
 function InstallBaseUbuntu() {
-    PrintGreen "Updating system and installing base tools on Debian-based distro..."   
+    PrintInfo "Updating system and installing base tools on Debian-based distro..."   
     export DEBIAN_FRONTEND=noninteractive        
     apt-get update -y || { PrintRed "Failed to update package lists"; exit 1; }
     #Using --no-install-recommends on upgrade is a great practice, especially in automated scripts, 
@@ -943,17 +998,64 @@ function InstallBaseUbuntu() {
 
 # Install the base system for the specified distribution.
 function install_base() {    
-    PrintGreen "Installing base system dependencies..."
+    PrintInfo "Installing base system dependencies..."
     if [[ "$distro" == "Ubuntu" || "$distro" == "Debian" ]]; then        
         InstallBaseUbuntu    
     elif [[ "$distro" == "AlmaLinux" || "$distro" == "CentOS" || "$distro" == "Rocky" ]]; then
         InstallBaseCentos
     fi
 }
+install_firewall() {
+    PrintInfo "Installing and configuring firewall (UFW)..."
+
+    # --- Debian / Ubuntu ---
+    if [[ "$distro" == "Ubuntu" || "$distro" == "Debian" ]]; then
+        apt-get update -y
+        apt-get install -y ufw || {
+            PrintRed "Failed to install UFW"
+            exit 1
+        }
+
+    # --- RHEL family ---
+    elif [[ "$distro" == "AlmaLinux" || "$distro" == "CentOS" || "$distro" == "Rocky" ]]; then
+        if command -v firewall-cmd >/dev/null 2>&1; then
+            PrintInfo "Removing firewalld (required for KiwiPanel)"
+            systemctl disable --now firewalld || true
+            dnf remove -y firewalld
+        fi
+
+        dnf install -y epel-release
+        dnf install -y ufw || {
+            PrintRed "Failed to install UFW"
+            exit 1
+        }
+    else
+        PrintRed "Unsupported distribution"
+        exit 1
+    fi
+
+    # --- Reset & defaults ---
+    ufw --force reset
+    ufw default deny incoming
+    ufw default allow outgoing
+
+    # --- Essential rules ---
+    ufw allow 22/tcp
+    ufw allow 80/tcp
+    ufw allow 443/tcp
+    ufw allow 8443/tcp
+    
+    # --- Enable ---
+    ufw --force enable
+
+    PrintGreen "Firewall enabled with safe defaults"
+    ufw status verbose
+}
+
 
 
 function verify(){
-    echo "==> Verifying ownership"
+    PrintInfo "==> Verifying ownership"
     for path in /opt/kiwipanel /etc/kiwipanel /var/log/kiwipanel /var/lib/kiwipanel; do
     owner=$(stat -c "%U:%G" "$path")
     if [ "$owner" != "kiwipanel:kiwisecure" ]; then
@@ -963,11 +1065,11 @@ function verify(){
 }
 
 
-function successMessage() {    
-    printf " \n"
-    PrintGreen "Kiwiscript has been successfully installed on your VPS!"
+function successMessage() {        
+    PrintGreen "KiwiPanel has been successfully installed on your VPS!"
     kiwipanel_d_end_time=$(date +%s)
     elapsed=$((kiwipanel_d_end_time - kiwipanel_d_start_time))
+    printf " \n"
     echo "$(tput setaf 2)Total time installed: ${elapsed} seconds.$(tput sgr0)"
     printf " \n"
     echo "

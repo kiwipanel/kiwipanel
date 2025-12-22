@@ -136,28 +136,48 @@ func CheckSSHPort() (bool, string) {
 }
 
 func CheckFirewall() (bool, string) {
-	if _, err := exec.LookPath("ufw"); err == nil {
-		out, _ := exec.Command("ufw", "status").Output()
-		if strings.Contains(string(out), "Status: active") {
-			return true, "ufw active"
-		}
-		return false, "ufw installed but inactive"
-	}
+	// Check all firewalls and prioritize active ones
 
+	// 1. Check firewalld
 	if _, err := exec.LookPath("firewall-cmd"); err == nil {
 		out, _ := exec.Command("firewall-cmd", "--state").Output()
 		if strings.TrimSpace(string(out)) == "running" {
 			return true, "firewalld running"
 		}
-		return false, "firewalld inactive"
 	}
 
+	// 2. Check UFW
+	if _, err := exec.LookPath("ufw"); err == nil {
+		out, _ := exec.Command("ufw", "status").Output()
+		if strings.Contains(string(out), "Status: active") {
+			return true, "ufw active"
+		}
+	}
+
+	// 3. Check nftables
 	if _, err := exec.LookPath("nft"); err == nil {
 		out, _ := exec.Command("nft", "list", "ruleset").Output()
 		if strings.Contains(string(out), "table") {
 			return true, "nftables rules present"
 		}
-		return false, "nftables empty"
+	}
+
+	// 4. Check iptables (legacy fallback)
+	out, err := exec.Command("iptables", "-L", "-n").Output()
+	if err == nil && len(out) > 0 {
+		// Has some rules beyond default empty chains
+		if strings.Count(string(out), "Chain") > 3 {
+			return true, "iptables active"
+		}
+	}
+
+	// If we get here, no active firewall found
+	// Report what's installed but inactive
+	if _, err := exec.LookPath("ufw"); err == nil {
+		return false, "ufw installed but inactive"
+	}
+	if _, err := exec.LookPath("firewall-cmd"); err == nil {
+		return false, "firewalld installed but inactive"
 	}
 
 	return false, "no firewall detected"

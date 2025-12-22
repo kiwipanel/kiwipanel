@@ -21,7 +21,7 @@ KiwiPanel is written primarily in Go, with a strong emphasis on:
 
 A core design principle of KiwiPanel is **zero lock-in**:
 
-- KiwiPanel can be **safely uninstalled at any time**
+- KiwiPanel can be **safely uninstalled at any time** using the command `kiwipanel uninstall` 
 - Your web stack continues to function normally after removal
 - No proprietary configuration formats
 - No background agents required for runtime operation
@@ -55,6 +55,18 @@ This project is still in **early development** and evolving rapidly. APIs, featu
 
 Feedback, issue reports, and contributions are welcome and encouraged. KiwiPanel is built in the open, with the goal of growing into a dependable, no-nonsense control panel that respects both the server and the user.
 
+### Supported Operating Systems
+
+KiwiPanel supports non-EOL Linux distributions officially supported by OpenLiteSpeed.
+
+- Rocky Linux 8, 9 (primary)
+- AlmaLinux 8, 9
+- RHEL 8, 9 and compatible derivatives
+- Debian 11, 12
+- Ubuntu LTS 22.04, 24.04
+
+CentOS Stream and EOL distributions are not supported.
+
 ### Install
 
 **Option 1:**
@@ -70,14 +82,6 @@ curl -sLO https://raw.githubusercontent.com/kiwipanel/kiwipanel/main/install && 
 ##### Port 8443: 
 On some cloud service providers such as Amazon Lightsail or Oracle, you have to manually open the port 8443 inside their control dashboards.
 
-##### Supported Operating Systems:
-Kiwipanel supports the following operating systems, given that OpenLiteSpeed supports current and non-EOL versions of the following Linux distributions:
-- CentOS* 8, 9, 10
-- Debian  11, 12, 13
-- Ubuntu  22, 24
-
-*Includes RedHat Enterprise Linux and derivatives: AlmaLinux, CloudLinux, Oracle Linux, RockyLinux, VzLinux, etc.
-
 ## Roadmap
 
 The roadmap below reflects the current direction, but priorities may shift based on real-world usage and community feedback.
@@ -91,8 +95,8 @@ The roadmap below reflects the current direction, but priorities may shift based
 - [x] SQLite-based local state 
 - [x] Thorough system inspection (CPU, memory, disk, OS...) with the command `kiwipanel check`  
 - [ ] OpenLiteSpeed + MariaDB + PHP stack provisioning (in progress)
-- [ ] Clear separation between panel logic and system tooling  
-- [ ] Internal logging and structured error handling 
+- [x] Clear separation between panel logic and system tooling  
+- [x] Internal logging and structured error handling 
 
 ⚠️ Not production-ready. Breaking changes expected.
 
@@ -121,7 +125,7 @@ The roadmap below reflects the current direction, but priorities may shift based
 **Goal:** Secure-by-default without hiding the system.
 
 - [ ] First-run security audit
-- [ ] Firewall awareness (UFW / firewalld detection, not replacement)
+- [x] Firewall UFW. Unintall firewalld if any.
 - [ ] SSH hardening recommendations (opt-in)
 - [ ] Fail2ban integration (optional, transparent configs)
 - [ ] TLS management (Let’s Encrypt)
@@ -183,6 +187,7 @@ If a feature cannot be explained clearly or mapped directly to system behavior, 
 - https://codemirror.net/5/doc/manual.html
 - https://echarts.apache.org/
 - https://github.com/google/ngx_brotli
+- https://github.com/mydumper/mydumper
 
 ### References
 - https://github.com/imthenachoman/How-To-Secure-A-Linux-Server
