@@ -163,9 +163,6 @@ GREEN='\033[0;32m'
 NC='\033[0m' #NC: Not color: reset color to the default
 IPADDRESS=$(curl -s --connect-timeout 5 https://cpanel.net/showip.cgi || hostname -I | awk '{print $1}')
 DIR=$(pwd)
-
-# Check the current distro and the kernel
-distro=$(grep -oP 'PRETTY_NAME="\K[^"]+' /etc/os-release | cut -f1 -d' ')
 readonly kernel_version=$(uname -r)
 distro_version=$(echo $(lsb_release -c | cut -d':' -f 2))
 
@@ -313,7 +310,7 @@ function check_architecture() {
 # OS Detection (refactored)
 # =========================
 
-load_os_release() {
+function load_os_release() {
     local file="${1:-/etc/os-release}"
 
     if [[ ! -f "$file" ]]; then
@@ -999,57 +996,63 @@ function InstallBaseUbuntu() {
 # Install the base system for the specified distribution.
 function install_base() {    
     PrintInfo "Installing base system dependencies..."
-    if [[ "$distro" == "Ubuntu" || "$distro" == "Debian" ]]; then        
-        InstallBaseUbuntu    
-    elif [[ "$distro" == "AlmaLinux" || "$distro" == "CentOS" || "$distro" == "Rocky" ]]; then
-        InstallBaseCentos
-    fi
+    PrintInfo "Installing base system dependencies..."
+    case "$OS_ID" in
+        ubuntu|debian)
+            InstallBaseUbuntu
+            ;;
+        rocky|almalinux|centos|rhel|ol|cloudlinux|vzlinux)
+            InstallBaseCentos
+            ;;
+        *)
+            PrintRed "Unsupported OS: $OS_ID"
+            exit 1
+            ;;
+    esac
 }
 
 function install_firewall() {
     PrintInfo "Installing and configuring firewall (UFW)..."
 
-    # --- Debian / Ubuntu ---
-    if [[ "$distro" == "Ubuntu" || "$distro" == "Debian" ]]; then
-        apt-get update -y
-        apt-get install -y ufw || {
-            PrintRed "Failed to install UFW"
+    case "$OS_ID" in
+        debian|ubuntu)
+            apt-get update -y
+            apt-get install -y ufw || {
+                PrintRed "Failed to install UFW"
+                exit 1
+            }
+            ;;
+        rocky|almalinux|rhel|ol|cloudlinux|vzlinux)
+            if command -v firewall-cmd >/dev/null 2>&1; then
+                PrintInfo "Removing firewalld (required for KiwiPanel)"
+                systemctl disable --now firewalld || true
+                dnf remove -y firewalld
+            fi
+
+            dnf install -y epel-release
+            dnf install -y ufw || {
+                PrintRed "Failed to install UFW"
+                exit 1
+            }
+            ;;
+        *)
+            PrintRed "Unsupported OS for firewall installation: $OS_ID"
             exit 1
-        }
+            ;;
+    esac
 
-    # --- RHEL family ---
-    elif [[ "$distro" == "AlmaLinux" || "$distro" == "CentOS" || "$distro" == "Rocky" ]]; then
-        if command -v firewall-cmd >/dev/null 2>&1; then
-            PrintInfo "Removing firewalld (required for KiwiPanel)"
-            systemctl disable --now firewalld || true
-            dnf remove -y firewalld
-        fi
-
-        dnf install -y epel-release
-        dnf install -y ufw || {
-            PrintRed "Failed to install UFW"
-            exit 1
-        }
-    else
-        PrintRed "Unsupported distribution"
-        exit 1
-    fi
-
-    # --- Reset & defaults ---
     ufw --force reset
     ufw default deny incoming
     ufw default allow outgoing
 
-    # --- Essential rules ---
     ufw allow 22/tcp
     ufw allow 80/tcp
     ufw allow 443/tcp
-    ufw allow 8443/tcp
-    
-    # --- Enable ---
+    ufw allow "$KIWIPANEL_PORT"/tcp
+
     ufw --force enable
 
-    PrintGreen "Firewall enabled with safe defaults"
+    PrintGreen "Firewall enabled successfully"
     ufw status verbose
 }
 
