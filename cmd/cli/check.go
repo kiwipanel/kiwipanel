@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/fatih/color"
+	"github.com/kiwipanel/kiwipanel/pkg/helpers"
 	"github.com/pelletier/go-toml/v2"
 	"github.com/spf13/cobra"
 )
@@ -42,8 +43,6 @@ func init() {
 		color.NoColor = true
 	}
 	rootCmd.AddCommand(checkCmd)
-	// checkCmd.Flags().BoolVar(&checkFix, "fix", false, "Attempt safe fixes for common problems")
-	// checkCmd.Flags().BoolVar(&checkJSON, "json", false, "Output result as JSON")
 }
 
 var checkCmd = &cobra.Command{
@@ -91,34 +90,8 @@ var checkCmd = &cobra.Command{
 	},
 }
 
-func cmdOK(name string, args ...string) (bool, string) {
-	out, err := exec.Command(name, args...).CombinedOutput()
-	if err != nil {
-		return false, string(out)
-	}
-	return true, string(out)
-}
-
-func cmdWithTimeout(timeout time.Duration, name string, args ...string) (bool, string) {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-
-	cmd := exec.CommandContext(ctx, name, args...)
-	out, err := cmd.CombinedOutput()
-
-	if ctx.Err() == context.DeadlineExceeded {
-		return false, fmt.Sprintf("command timeout (%v)", timeout)
-	}
-
-	if err != nil {
-		return false, string(out)
-	}
-
-	return true, string(out)
-}
-
 func CheckSSHRootLogin() (bool, string) {
-	ok, out := cmdWithTimeout(5*time.Second, "sshd", "-T")
+	ok, out := helpers.CmdWithTimeout(5*time.Second, "sshd", "-T")
 	if !ok {
 		return false, "cannot read sshd config"
 	}
@@ -131,7 +104,7 @@ func CheckSSHRootLogin() (bool, string) {
 }
 
 func CheckSSHPasswordAuth() (bool, string) {
-	ok, out := cmdWithTimeout(5*time.Second, "sshd", "-T")
+	ok, out := helpers.CmdWithTimeout(5*time.Second, "sshd", "-T")
 	if !ok {
 		return false, "cannot read sshd config"
 	}
@@ -144,7 +117,7 @@ func CheckSSHPasswordAuth() (bool, string) {
 }
 
 func CheckSSHPort() (bool, string) {
-	ok, out := cmdWithTimeout(5*time.Second, "sshd", "-T")
+	ok, out := helpers.CmdWithTimeout(5*time.Second, "sshd", "-T")
 	if !ok {
 		return false, "cannot read sshd config"
 	}
@@ -200,24 +173,26 @@ func CheckIntrusionPrevention() (bool, string) {
 	return false, "no intrusion prevention system (fail2ban || crowdsec) running"
 }
 
-func CheckDiskUsageUpdate() (bool, string) {
-	type mountStat struct {
-		Mount string
-		Used  int
-		Avail string
+func CheckDiskUsage() (bool, string) {
+	type fsStat struct {
+		FS      string
+		Mounts  []string
+		UsedPct int
+		FreeGB  float64
 	}
 
-	importantMounts := []string{"/", "/var", "/opt", "/home"}
-	var stats []mountStat
+	paths := []string{"/", "/var", "/opt", "/home"}
+	fsMap := make(map[string]*fsStat)
+
 	critical := false
 	warning := false
 
-	for _, m := range importantMounts {
-		if _, err := os.Stat(m); err != nil {
-			continue // mount does not exist
+	for _, p := range paths {
+		if _, err := os.Stat(p); err != nil {
+			continue
 		}
 
-		out, err := exec.Command("df", "-P", m).Output()
+		out, err := exec.Command("df", "-P", p).Output()
 		if err != nil {
 			continue
 		}
@@ -232,14 +207,22 @@ func CheckDiskUsageUpdate() (bool, string) {
 			continue
 		}
 
+		fs := fields[0]
 		usedPct := atoiSafe(strings.TrimSuffix(fields[4], "%"))
-		avail := fields[3]
+		availKB := atoiSafe(fields[3])
+		freeGB := float64(availKB) / 1024.0 / 1024.0
 
-		stats = append(stats, mountStat{
-			Mount: m,
-			Used:  usedPct,
-			Avail: avail,
-		})
+		stat, ok := fsMap[fs]
+		if !ok {
+			stat = &fsStat{
+				FS:      fs,
+				UsedPct: usedPct,
+				FreeGB:  freeGB,
+			}
+			fsMap[fs] = stat
+		}
+
+		stat.Mounts = append(stat.Mounts, p)
 
 		if usedPct >= 85 {
 			critical = true
@@ -248,21 +231,22 @@ func CheckDiskUsageUpdate() (bool, string) {
 		}
 	}
 
-	if len(stats) == 0 {
-		return true, "no relevant mount points detected"
+	if len(fsMap) == 0 {
+		return true, "no relevant filesystems detected"
 	}
 
 	var parts []string
-	for _, s := range stats {
+	for _, s := range fsMap {
 		parts = append(parts, fmt.Sprintf(
-			"%s:%d%% (%s free)",
-			s.Mount,
-			s.Used,
-			s.Avail,
+			"%s (%s): %d%% used, %.1f GB free",
+			s.FS,
+			strings.Join(s.Mounts, ","),
+			s.UsedPct,
+			s.FreeGB,
 		))
 	}
 
-	summary := strings.Join(parts, ", ")
+	summary := strings.Join(parts, " | ")
 
 	if critical {
 		return false, "disk critical: " + summary
@@ -272,27 +256,6 @@ func CheckDiskUsageUpdate() (bool, string) {
 	}
 
 	return true, "disk OK: " + summary
-}
-
-func CheckDiskUsage() (bool, string) {
-	out, err := exec.Command("df", "-P", "/").Output()
-	if err != nil {
-		return true, "cannot check disk usage"
-	}
-
-	lines := strings.Split(string(out), "\n")
-	if len(lines) < 2 {
-		return true, "unexpected df output"
-	}
-
-	fields := strings.Fields(lines[1])
-	usage := strings.TrimSuffix(fields[4], "%")
-
-	if pct := atoiSafe(usage); pct >= 80 {
-		return false, fmt.Sprintf("disk usage %d%%", pct)
-	}
-
-	return true, fmt.Sprintf("disk usage %s%%", usage)
 }
 
 func CheckMemoryUsage() (bool, string) {
@@ -468,7 +431,6 @@ func runAllChecks(doFix bool) *CheckReport {
 		{"system:load_average", CheckLoadAverage},
 		{"system:uptime_since", CheckUptimeSince},
 		{"system:disk_usage", CheckDiskUsage},
-		{"system:disk_usage_update", CheckDiskUsageUpdate},
 		{"system:memory_usage", CheckMemoryUsage},
 		{"system:users", CheckSystemUsers},
 		{"security:uid0_users", CheckUID0Users},
@@ -656,7 +618,7 @@ func CheckRebootRequired() (bool, string) {
 }
 
 func CheckPublicIP() (bool, string) {
-	ok, out := cmdWithTimeout(5*time.Second, "curl", "-s", "--max-time", "5", "https://api.ipify.org")
+	ok, out := helpers.CmdWithTimeout(5*time.Second, "curl", "-s", "--max-time", "5", "https://ifconfig.me/ip")
 	if !ok {
 		return false, "unable to detect public IP"
 	}

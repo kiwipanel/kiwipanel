@@ -15,7 +15,7 @@ var (
 func IsInstalled() bool {
 	isInstalledOnce.Do(func() {
 		// method 1: check config exists
-		if _, err := os.Stat("/opt/kiwipanel/config/kiwipanel.toml"); err == nil {
+		if _, err := os.Stat("/opt/kiwipanel/meta/.installed"); err == nil {
 			isInstalledVal = true
 			return
 		}

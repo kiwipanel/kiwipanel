@@ -31,7 +31,8 @@ func showPasscode() error {
 	if err != nil {
 		return fmt.Errorf("passcode not found")
 	}
-	passcode := strings.TrimSpace(string(data))
+	passcode := colorInfo(strings.TrimSpace(string(data)))
 	fmt.Println("KiwiPanel passcode:", passcode)
+	fmt.Println("To change the passcode, please type 'kiwipanel passcode-rotate'")
 	return nil
 }

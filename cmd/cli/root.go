@@ -9,10 +9,12 @@ import (
 )
 
 var (
+	colorTitle = color.New(color.FgCyan, color.Bold).SprintFunc()
 	colorOK    = color.New(color.FgGreen).SprintFunc()
-	colorFail  = color.New(color.FgRed).SprintFunc()
 	colorWarn  = color.New(color.FgYellow).SprintFunc()
-	colorTitle = color.New(color.Bold, color.FgCyan).SprintFunc()
+	colorFail  = color.New(color.FgRed).SprintFunc()
+	colorInfo  = color.New(color.FgCyan).SprintFunc()
+	colorBold  = color.New(color.Bold).SprintFunc()
 )
 var ShortIntroduction = colorTitle("Kiwipanel control CLI")
 
