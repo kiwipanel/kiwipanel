@@ -1005,7 +1005,8 @@ function install_base() {
         InstallBaseCentos
     fi
 }
-install_firewall() {
+
+function install_firewall() {
     PrintInfo "Installing and configuring firewall (UFW)..."
 
     # --- Debian / Ubuntu ---
@@ -1102,6 +1103,7 @@ function main() {
     check_condition_before_install
     create_swap   
     install_base        
+    install_firewall
     installkiwipanel
     verify
     successMessage
