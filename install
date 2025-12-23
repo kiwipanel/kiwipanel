@@ -164,7 +164,7 @@ NC='\033[0m' #NC: Not color: reset color to the default
 IPADDRESS=$(curl -s --connect-timeout 5 https://cpanel.net/showip.cgi || hostname -I | awk '{print $1}')
 DIR=$(pwd)
 readonly kernel_version=$(uname -r)
-distro_version=$(echo $(lsb_release -c | cut -d':' -f 2))
+
 
 #Reference: https://www.cloudron.io/get.html
 readonly MINIMUM_DISK_SIZE_GB="5"
@@ -656,7 +656,22 @@ function install_systemd_service() {
     systemctl daemon-reload
     systemctl enable kiwipanel.service
     systemctl start kiwipanel.service
-    PrintGreen "Success: Installing systemd service."
+
+     # Wait for service to be ready
+    PrintInfo "Waiting for KiwiPanel service to start..."
+    local timeout=30
+    local elapsed=0    
+    while [ $elapsed -lt $timeout ]; do
+        if systemctl is-active --quiet kiwipanel.service; then
+            PrintGreen "✓ KiwiPanel service started successfully"
+            return 0
+        fi
+        sleep 1
+        ((elapsed++))
+    done    
+    PrintWarning "⚠ KiwiPanel service did not start within ${timeout}s"
+    systemctl status kiwipanel.service --no-pager || true
+    
 }
 function install_login_banner() {
     local PROFILE_D="/etc/profile.d/kiwipanel.sh"
@@ -949,7 +964,6 @@ function InstallBaseCentos() {
 
     $PKG_MGR install -y \
         gnupg2 \
-        redhat-lsb-core \
         procps-ng \
         wget curl git zip unzip nano \
         openssl cronie lsof jq || {
@@ -994,8 +1008,7 @@ function InstallBaseUbuntu() {
 
 
 # Install the base system for the specified distribution.
-function install_base() {    
-    PrintInfo "Installing base system dependencies..."
+function install_base() {        
     PrintInfo "Installing base system dependencies..."
     case "$OS_ID" in
         ubuntu|debian)
@@ -1068,6 +1081,49 @@ function verify(){
     done
 }
 
+function post_install_check() {
+    PrintInfo "==> Running post-installation health checks..."
+    
+    local errors=0
+    
+    # Check services
+    for service in kiwipanel ufw crond; do
+        if systemctl is-active --quiet "$service" 2>/dev/null; then
+            PrintGreen "✓ $service is running"
+        else
+            PrintWarning "✗ $service is not running"
+            ((errors++))
+        fi
+    done
+    
+    # Check ports
+    for port in 22 80 443 $KIWIPANEL_PORT; do
+        if ss -tuln | grep -q ":$port"; then
+            PrintGreen "✓ Port $port is configured"
+        else
+            PrintWarning "✗ Port $port is not listening"
+        fi
+    done
+    
+    # Check disk space
+    local disk_free=$(df / | tail -1 | awk '{print $4}')
+    if [ "$disk_free" -lt 1048576 ]; then  # Less than 1GB
+        PrintWarning "Low disk space: $(($disk_free / 1024))MB free"
+    fi
+    
+    # Check memory
+    local mem_available=$(free -m | awk '/^Mem:/ {print $7}')
+    if [ "$mem_available" -lt 100 ]; then
+        PrintWarning "Low available memory: ${mem_available}MB"
+    fi
+    
+    if [ $errors -eq 0 ]; then
+        PrintGreen "All health checks passed!"
+    else
+        PrintWarning "Some checks failed - review warnings above"
+    fi
+}
+
 
 function successMessage() {        
     PrintGreen "KiwiPanel has been successfully installed on your VPS!"
@@ -1109,6 +1165,7 @@ function main() {
     install_firewall
     installkiwipanel
     verify
+    post_install_check
     successMessage
     cleanup
 }
