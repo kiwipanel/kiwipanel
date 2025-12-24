@@ -59,11 +59,11 @@ Feedback, issue reports, and contributions are welcome and encouraged. KiwiPanel
 
 KiwiPanel supports non-EOL Linux distributions officially supported by OpenLiteSpeed.
 
-- Rocky Linux 8, 9 (primary)
-- AlmaLinux 8, 9
-- RHEL 8, 9 and compatible derivatives
-- Debian 11, 12
+- Debian 11, 12, 13
 - Ubuntu LTS 22.04, 24.04
+- Rocky Linux 8, 9, 10
+- AlmaLinux 8, 9, 10
+- RHEL 8, 9 and compatible derivatives
 
 CentOS Stream and EOL distributions are not supported.
 

@@ -85,7 +85,7 @@ function PrintInfo() {
     LogInfo "$*"
 }
 
-function PrintWarning() {
+function PrintWarn() {
     local YELLOW_BROWN='\033[38;5;179m' # ANSI color code for yellow-brown
     local NC='\033[0m'                  # Reset to default color
     local content="${1}"
@@ -150,7 +150,7 @@ if systemctl status kiwipanel.service >/dev/null 2>&1; then
     PrintRed "Please install on a fresh compute or manually remove the existing service."
     exit 1
 else
-    PrintGreen "Thanks for choosing KiwiPanel!"
+    PrintGreen "Welcome! Thanks for choosing KiwiPanel!"
 fi
 
 # Detect the system's architecture
@@ -230,7 +230,7 @@ HOSTVN="var/hostvn/hostvn.conf"
 AAPANEL="/www/server/panel"
 
 function check_panel_script() {
-    PrintInfo "==> Checking the existing script or panel. You should install KiwiPanel on a fresh compute!"
+    PrintInfo "Checking the existing script or panel. You should install KiwiPanel on a fresh compute!"
     sleep 2
 
     # aaPanel
@@ -282,10 +282,10 @@ function check_panel_script() {
     fi
 
     # LiteSpeed (OLS or Enterprise)
-    if [ -d /usr/local/lsws ] || [ -d /home/lsws ]; then
-        PrintRed "Your server has LiteSpeed installed — KiwiPanel can only be installed on a fresh VPS."
-        exit 1
-    fi
+    # if [ -d /usr/local/lsws ] || [ -d /home/lsws ]; then
+    #     PrintRed "Your server has LiteSpeed installed — KiwiPanel can only be installed on a fresh VPS."
+    #     exit 1
+    # fi
 
     PrintGreen "No conflicting panels detected. Continuing installation..."
     sleep 1
@@ -294,9 +294,8 @@ function check_panel_script() {
 
 function check_architecture() {
     PrintInfo "Checking architechture. Kiwipanel supports 64 bits system only!"
-    sleep 2
-    #Check the ARCHITECTURE
-    #Ref: https://raw.githubusercontent.com/runtipi/runtipi/master/scripts/install.sh
+    sleep 2    
+    # Ref: https://raw.githubusercontent.com/runtipi/runtipi/master/scripts/install.sh
     # Not supported on 32 bits systems.
     # Note: aarch64 [ARM 64-bit (also known as AArch64), armv7: 32-bit ARM]
     local ARCHITECTURE="$(uname -m)"
@@ -534,7 +533,7 @@ function fix_script_permissions() {
         # Change ownership to kiwipanel user and kiwisecure group
         chown -R kiwipanel:kiwisecure "$SCRIPT_DIR"
         
-        PrintGreen "✅ Scripts are now executable by kiwipanel user"
+        PrintGreen "✓ Scripts are now executable by kiwipanel user"
     else
         PrintInfo "⚠ No scripts directory found at $SCRIPT_DIR"
     fi
@@ -659,7 +658,7 @@ function install_systemd_service() {
 
      # Wait for service to be ready
     PrintInfo "Waiting for KiwiPanel service to start..."
-    local timeout=30
+    local timeout=5
     local elapsed=0    
     while [ $elapsed -lt $timeout ]; do
         if systemctl is-active --quiet kiwipanel.service; then
@@ -669,7 +668,7 @@ function install_systemd_service() {
         sleep 1
         ((elapsed++))
     done    
-    PrintWarning "⚠ KiwiPanel service did not start within ${timeout}s"
+    PrintWarn "⚠ KiwiPanel service did not start within ${timeout}s"
     systemctl status kiwipanel.service --no-pager || true
     
 }
@@ -890,6 +889,12 @@ function disable_default_motd() {
 
 function cleanup() {
     rm -f "$TMP_ZIP"
+    rm -rf /tmp/kiwipanel-* 2>/dev/null || true
+    
+    # Clean up any failed extraction attempts
+    if [[ -d /opt/kiwipanel.tmp ]]; then
+        rm -rf /opt/kiwipanel.tmp
+    fi
 }
 
 
@@ -920,14 +925,14 @@ function create_swap() {
     needed_kb=$((swap_size_kb + swap_size_kb / 10))  # +10% overhead
 
     if [[ $available_disk_kb -lt $needed_kb ]]; then
-        PrintWarning "Insufficient disk space for ${swap_size_kb}K swap (need ~$((needed_kb/1024/1024 + 1)) GB free). Skipping."
+        PrintWarn "Insufficient disk space for ${swap_size_kb}K swap (need ~$((needed_kb/1024/1024 + 1)) GB free). Skipping."
         return
     fi
 
     PrintInfo "==> Creating ${swap_size_kb}K swap file at /swapfile..."
 
     if ! fallocate -l "${swap_size_kb}K" /swapfile 2>/dev/null; then
-        PrintWarning "fallocate failed. Using dd (this may take a while)..."
+        PrintWarn "fallocate failed. Using dd (this may take a while)..."
         dd if=/dev/zero of=/swapfile bs=1M count=$((swap_size_kb / 1024)) status=progress || return 1
     fi
 
@@ -944,6 +949,16 @@ function create_swap() {
 }
 
 function InstallBaseCentos() {
+    PrintInfo "Updating system on RHEL family..."    
+    # 1. Handle SELinux (Critical for panels)
+    # If SELinux is Enforcing (default on Rocky/Alma), 
+    # your Nginx/PHP/KiwiPanel service will fail to start or fail to write logs, and the script will exit with an error.
+    if command -v setenforce &> /dev/null; then
+        setenforce 0
+        sed -i 's/^SELINUX=.*/SELINUX=permissive/g' /etc/selinux/config
+        PrintInfo "SELinux set to Permissive mode."
+    fi
+
     PrintInfo "Updating system and installing base tools on CentOS-based distro..."    
     #dnf detection (future-proofing), dnf is available on CentOS 8+, AlmaLinux, RockyLinux
     PKG_MGR=$(command -v dnf || command -v yum) || {
@@ -1060,8 +1075,12 @@ function install_firewall() {
 
     ufw allow 22/tcp
     ufw allow 80/tcp
-    ufw allow 443/tcp
+    # ufw allow 443/tcp        
     ufw allow "$KIWIPANEL_PORT"/tcp
+
+     # Explicitly deny OLS WebAdmin from internet
+    ufw deny 7080/tcp
+    ufw deny 8088/tcp  # Block old default port too
 
     ufw --force enable
 
@@ -1070,13 +1089,220 @@ function install_firewall() {
 }
 
 
+#############################################
+# OpenLiteSpeed Installer (KiwiPanel)
+# Standard / Official / Idempotent
+#############################################
+
+LSWS_DIR="/usr/local/lsws"
+LSWS_CTRL="$LSWS_DIR/bin/lswsctrl"
+PHP_VER="83"
+
+# ------------------------------------------------------------------------------
+# Detect OS (Ubuntu only – explicit)
+# ------------------------------------------------------------------------------
+detect_os() {
+    if ! grep -qs "Ubuntu" /etc/os-release; then
+        PrintRed "Unsupported OS. KiwiPanel supports Ubuntu only."
+        exit 1
+    fi
+}
+
+# ------------------------------------------------------------------------------
+# Install LiteSpeed Repository (OFFICIAL)
+# ------------------------------------------------------------------------------
+install_repo() {
+    if command -v lswsctrl >/dev/null 2>&1; then
+        PrintInfo "LiteSpeed repository already configured"
+        return
+    fi
+
+    PrintInfo "Installing LiteSpeed repository (official)"
+    curl -fsSL https://repo.litespeed.sh | bash
+}
+
+# ------------------------------------------------------------------------------
+# Install OpenLiteSpeed
+# ------------------------------------------------------------------------------
+install_ols() {
+    if [[ -d "$LSWS_DIR" ]]; then
+        PrintInfo "OpenLiteSpeed already installed"
+        return
+    fi
+
+    PrintInfo "Installing OpenLiteSpeed"
+    apt-get update -y
+    apt-get install -y openlitespeed
+    PrintGreen "Done: Installed OpenLiteSpeed"
+}
+
+# ------------------------------------------------------------------------------
+# Ensure OpenLiteSpeed is enabled & running
+# ------------------------------------------------------------------------------
+ensure_running() {
+    systemctl enable lshttpd >/dev/null 2>&1
+
+    if "$LSWS_CTRL" status 2>/dev/null | grep -q running; then
+        PrintGreen "OpenLiteSpeed is already running"
+    else
+        PrintInfo "Starting OpenLiteSpeed"
+        systemctl start lshttpd
+        sleep 2
+        if "$LSWS_CTRL" status 2>/dev/null | grep -q running; then
+            PrintGreen "OpenLiteSpeed started successfully"
+        else
+            PrintWarn "OpenLiteSpeed may not have started correctly"
+            systemctl status lshttpd --no-pager || true
+        fi
+    fi
+}
+
+# ------------------------------------------------------------------------------
+# Install LSPHP (no assumptions, no overrides)
+# ------------------------------------------------------------------------------
+function install_lsphp() {
+    if [[ -x "$LSWS_DIR/lsphp${PHP_VER}/bin/lsphp" ]]; then
+        PrintInfo "LSPHP ${PHP_VER} already installed"
+        return
+    fi
+
+    PrintInfo "Installing LSPHP ${PHP_VER}"
+    apt-get install -y \
+        "lsphp${PHP_VER}" \
+        "lsphp${PHP_VER}-common" \
+        "lsphp${PHP_VER}-mysql"
+    
+    PrintGreen "Done: Installed LSPHP ${PHP_VER}"
+}
+
+# ------------------------------------------------------------------------------
+# Configure OpenLiteSpeed listeners via httpd_config.conf (KiwiPanel-managed)
+# ------------------------------------------------------------------------------
+# IMPORTANT:
+# OpenLiteSpeed listeners MUST be configured in httpd_config.conf
+# systemd overrides cannot control listening ports
+configure_lsws_default_listener() {
+    local CONF="$LSWS_DIR/conf/httpd_config.conf"
+    local LISTENER_NAME="HTTP"
+
+    PrintInfo "Configuring OpenLiteSpeed HTTP listener on port 80 (KiwiPanel-managed)"
+
+    # Backup once
+    if [[ ! -f "${CONF}.bak" ]]; then
+        cp "$CONF" "${CONF}.bak"
+    fi
+
+    # 1️⃣ Remove any existing KiwiPanel HTTP listener
+    sed -i "/listener ${LISTENER_NAME} {/,/}/d" "$CONF"
+
+    # 2️⃣ Remove *dangerous* Default listener on port 80 (if any)
+    awk '
+        BEGIN { in_listener=0 }
+        /listener Default[[:space:]]*{/ { in_listener=1; buf=$0; next }
+        in_listener && /}/ {
+            buf = buf "\n" $0
+            if (buf ~ /\*:80/) {
+                in_listener=0
+                next
+            }
+            print buf
+            in_listener=0
+            next
+        }
+        in_listener { buf = buf "\n" $0; next }
+        { print }
+    ' "$CONF" > "${CONF}.tmp" && mv "${CONF}.tmp" "$CONF"
+
+    # 3️⃣ Append clean HTTP listener
+    cat >> "$CONF" <<EOF
+
+# =========================================================
+# KiwiPanel-managed HTTP listener
+# DO NOT EDIT MANUALLY
+# =========================================================
+listener ${LISTENER_NAME} {
+    address                 *:80
+    secure                  0
+    map                     Example *
+}
+EOF
+
+    PrintGreen "✓ HTTP listener configured cleanly on port 80"
+}
+
+
+
+# ------------------------------------------------------------------------------
+# disable_7080
+# ------------------------------------------------------------------------------
+
+disable_7080() {
+    local CONF="$LSWS_DIR/admin/conf/admin_config.conf"
+
+    if grep -q "address.*:7080" "$CONF"; then
+        PrintInfo "Restricting WebAdmin to localhost (7080)"
+        sed -i 's/address.*/address 127.0.0.1:7080/' "$CONF"
+        systemctl restart lshttpd
+    else
+        PrintInfo "WebAdmin listener already restricted"
+    fi
+}
+
+configure_minimal_vhost() {
+    local VHOST_ROOT="$LSWS_DIR/Example"
+    local DOCROOT="$VHOST_ROOT/html"
+
+    PrintInfo "Configuring minimal Example vhost"
+
+    mkdir -p "$DOCROOT"
+
+    cat > "$DOCROOT/index.html" <<'EOF'
+<!DOCTYPE html>
+<html>
+<head><title>KiwiPanel</title></head>
+<body>
+<h1>KiwiPanel Server</h1>
+<p>OpenLiteSpeed is running successfully!</p>
+</body>
+</html>
+EOF
+
+    chown -R lsadm:lsadm "$VHOST_ROOT"
+    chmod -R 755 "$VHOST_ROOT"
+}
+# ------------------------------------------------------------------------------
+# WebAdmin password (official mechanism only)
+# ------------------------------------------------------------------------------
+function ensure_admin_password() {
+    if [[ -f "$LSWS_DIR/adminpasswd" ]]; then
+        PrintInfo "WebAdmin password already initialized"
+        return
+    fi
+
+    PrintInfo "Initializing WebAdmin password"
+    "$LSWS_DIR/admin/misc/admpass.sh"
+}
+
+# ------------------------------------------------------------------------------
+# Health checks (LiteSpeed-standard)
+# ------------------------------------------------------------------------------
+function health_check() {    
+    if ss -tulnp | awk '$5 ~ /:80$/'; then
+        PrintGreen "✓ OpenLiteSpeed is listening on port 80"
+    else
+        PrintRed "✗ OpenLiteSpeed failed to bind port 80"
+        PrintRed "Installation aborted (listener misconfiguration)"
+        exit 1
+    fi
+}
+
 
 function verify(){
     PrintInfo "==> Verifying ownership"
     for path in /opt/kiwipanel /etc/kiwipanel /var/log/kiwipanel /var/lib/kiwipanel; do
     owner=$(stat -c "%U:%G" "$path")
     if [ "$owner" != "kiwipanel:kiwisecure" ]; then
-        PrintWarning "$path ownership is $owner (expected kiwipanel:kiwisecure)"
+        PrintWarn "$path ownership is $owner (expected kiwipanel:kiwisecure)"
     fi
     done
 }
@@ -1086,12 +1312,20 @@ function post_install_check() {
     
     local errors=0
     
+    # Determine cron service name based on OS
+    local cron_service="cron"
+    case "$OS_ID" in
+        rocky|almalinux|centos|rhel|ol|cloudlinux|vzlinux)
+            cron_service="crond"
+            ;;
+    esac
+    
     # Check services
-    for service in kiwipanel ufw crond; do
+    for service in kiwipanel ufw "$cron_service"; do
         if systemctl is-active --quiet "$service" 2>/dev/null; then
             PrintGreen "✓ $service is running"
         else
-            PrintWarning "✗ $service is not running"
+            PrintWarn "✗ $service is not running"
             ((errors++))
         fi
     done
@@ -1101,46 +1335,49 @@ function post_install_check() {
         if ss -tuln | grep -q ":$port"; then
             PrintGreen "✓ Port $port is configured"
         else
-            PrintWarning "✗ Port $port is not listening"
+            PrintWarn "✗ Port $port is not listening"
         fi
     done
     
     # Check disk space
     local disk_free=$(df / | tail -1 | awk '{print $4}')
     if [ "$disk_free" -lt 1048576 ]; then  # Less than 1GB
-        PrintWarning "Low disk space: $(($disk_free / 1024))MB free"
+        PrintWarn "Low disk space: $(($disk_free / 1024))MB free"
     fi
     
     # Check memory
     local mem_available=$(free -m | awk '/^Mem:/ {print $7}')
     if [ "$mem_available" -lt 100 ]; then
-        PrintWarning "Low available memory: ${mem_available}MB"
+        PrintWarn "Low available memory: ${mem_available}MB"
     fi
     
     if [ $errors -eq 0 ]; then
         PrintGreen "All health checks passed!"
     else
-        PrintWarning "Some checks failed - review warnings above"
+        PrintWarn "Some checks failed - review warnings above"
     fi
 }
-
 
 function successMessage() {        
     PrintGreen "KiwiPanel has been successfully installed on your VPS!"
     kiwipanel_d_end_time=$(date +%s)
+    local final_pass=$(cat "/opt/kiwipanel/meta/passcode")
     elapsed=$((kiwipanel_d_end_time - kiwipanel_d_start_time))
     printf " \n"
     echo "$(tput setaf 2)Total time installed: ${elapsed} seconds.$(tput sgr0)"
     printf " \n"
-    echo "
-    "$(tput setaf 2)================================Install KiwiPanel Done!==============================$(tput sgr0)"
-
-    Login at : http://$IPADDRESS:$KIWIPANEL_PORT/$kiwipanel_passcode
-
-    "$(tput setaf 2)=====================================================================================$(tput sgr0)"
-    "
+    echo "$(tput setaf 2)================================Install KiwiPanel Done!==============================$(tput sgr0)"
+    echo ""
+    echo "Login at : http://$IPADDRESS:$KIWIPANEL_PORT/$kiwipanel_passcode"
+    echo ""    
+    echo "   User:     admin" # or whatever your default user is
+    echo "   Passcode: ${final_pass}"
+    echo ""
+    echo ""
+    echo "$(tput setaf 2)=====================================================================================$(tput sgr0)"
     LogInfo "Installation completed successfully"
 }
+
 function installkiwipanel() {
     prepare_directories
     show_version
@@ -1157,16 +1394,39 @@ function installkiwipanel() {
     disable_default_motd
 }
 
+# ------------------------------------------------------------------------------
+# Main flow
+# ------------------------------------------------------------------------------
+function install_litespeed_server() {
+    detect_os
+    install_repo
+    install_ols
+    install_lsphp
+    ensure_admin_password
+    ensure_running    
+    configure_lsws_default_listener    
+    disable_7080
+    configure_minimal_vhost
+    
+    # ✅ Graceful restart to apply all changes
+    PrintInfo "Restarting OpenLiteSpeed"
+    systemctl restart lshttpd
+    sleep 2
+
+    health_check
+}
+
 function main() {
     welcome
-    check_condition_before_install
-    create_swap   
+    check_condition_before_install       
     install_base        
+    create_swap
     install_firewall
-    installkiwipanel
+    install_litespeed_server
+    installkiwipanel    
     verify
     post_install_check
-    successMessage
+    successMessage    
     cleanup
 }
 

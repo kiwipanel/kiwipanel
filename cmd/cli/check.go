@@ -396,15 +396,19 @@ func runAllChecks(doFix bool) *CheckReport {
 	}
 
 	// 3. Services
-	serviceNames := []string{"kiwipanel.service", "openlitespeed", "mariadb", "redis", "nginx", "apache2", "httpd"}
+	serviceNames := []string{"kiwipanel", "lsws", "mariadb", "redis", "nginx", "apache2", "httpd"}
 	for _, s := range serviceNames {
-		if serviceExists(s) {
+		if serviceExists(s) { // serviceExists will add .service suffix internally
 			if svcRunning(s) {
 				results = append(results, CheckResult{fmt.Sprintf("service:%s", s), true, "running"})
 			} else {
 				results = append(results, CheckResult{fmt.Sprintf("service:%s", s), false, "stopped"})
 				if doFix {
-					_ = exec.Command("systemctl", "start", s).Run()
+					serviceName := s
+					if !strings.HasSuffix(serviceName, ".service") {
+						serviceName = serviceName + ".service"
+					}
+					_ = exec.Command("systemctl", "start", serviceName).Run()
 					if svcRunning(s) {
 						results = append(results, CheckResult{fmt.Sprintf("service_fix:%s", s), true, "started"})
 					}
@@ -558,11 +562,24 @@ func validateToml(path string) (bool, string) {
 }
 
 func serviceExists(name string) bool {
-	if _, err := exec.LookPath("systemctl"); err == nil {
-		err := exec.Command("systemctl", "list-unit-files", name).Run()
-		return err == nil
+	if _, err := exec.LookPath("systemctl"); err != nil {
+		return false
 	}
-	return false
+
+	// Ensure .service suffix
+	if !strings.HasSuffix(name, ".service") {
+		name = name + ".service"
+	}
+
+	cmd := exec.Command("systemctl", "show", name, "-p", "LoadState")
+	out, err := cmd.Output()
+	if err != nil {
+		return false
+	}
+
+	// If service exists, LoadState will be "loaded"
+	// If not exists, LoadState will be "not-found"
+	return !strings.Contains(string(out), "not-found")
 }
 
 func svcRunning(name string) bool {
