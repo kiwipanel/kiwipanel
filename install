@@ -1096,7 +1096,7 @@ function install_firewall() {
 
 LSWS_DIR="/usr/local/lsws"
 LSWS_CTRL="$LSWS_DIR/bin/lswsctrl"
-PHP_VER="83"
+PHP_VER="84"
 
 # ------------------------------------------------------------------------------
 # Detect OS (Ubuntu only – explicit)
@@ -1227,10 +1227,19 @@ listener ${LISTENER_NAME} {
 }
 EOF
 
+# Include KiwiPanel-managed config (safe, upgrade-proof)
+if ! grep -q "kiwipanel.conf" "$CONF"; then
+    cat >> "$CONF" <<'EOF'
+
+# =========================================================
+# KiwiPanel include (DO NOT REMOVE)
+# =========================================================
+include /opt/kiwipanel/config/lsws/config/kiwipanel.conf
+EOF
+fi
+
     PrintGreen "✓ HTTP listener configured cleanly on port 80"
 }
-
-
 
 # ------------------------------------------------------------------------------
 # disable_7080
@@ -1261,8 +1270,7 @@ configure_minimal_vhost() {
 <html>
 <head><title>KiwiPanel</title></head>
 <body>
-<h1>KiwiPanel Server</h1>
-<p>OpenLiteSpeed is running successfully!</p>
+<p>OpenLiteSpeed: Service Status [OK]</p>
 </body>
 </html>
 EOF

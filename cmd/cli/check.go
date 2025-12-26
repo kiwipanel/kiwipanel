@@ -54,6 +54,8 @@ var checkCmd = &cobra.Command{
 		fmt.Println(colorTitle("======================"))
 		fmt.Println(colorOK("→ Running system checks, please wait...\n"))
 
+		helpers.GetUserInfo()
+
 		report := runAllChecks(checkFix)
 
 		// compute health percentage

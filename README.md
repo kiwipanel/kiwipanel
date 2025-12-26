@@ -94,18 +94,16 @@ The roadmap below reflects the current direction, but priorities may shift based
 - [x] CLI framework (`kiwipanel`) for system-level operations  
 - [x] SQLite-based local state 
 - [x] Thorough system inspection (CPU, memory, disk, OS...) with the command `kiwipanel check`  
-- [ ] OpenLiteSpeed + MariaDB + PHP stack provisioning (in progress)
+- [x] OpenLiteSpeed + MariaDB + PHP stack provisioning
 - [x] Clear separation between panel logic and system tooling  
 - [x] Internal logging and structured error handling 
-
-⚠️ Not production-ready. Breaking changes expected.
 
 ---
 
 ### Phase 1 — Core Panel Features (Alpha)
 **Goal:** Make KiwiPanel usable for real servers with limited scope.
 
-- [ ] Web UI authentication (local users only)
+- [ ] Web UI authentication (local users only)  (in progress)
 - [ ] Service management (start/stop/reload):
   - OpenLiteSpeed
   - MariaDB
@@ -118,6 +116,8 @@ The roadmap below reflects the current direction, but priorities may shift based
 - [ ] Database management (create/delete users & databases)
 - [ ] Safe defaults for permissions and filesystem layout
 - [ ] Non-destructive config generation (no silent overwrites)
+
+⚠️ Not production-ready. Breaking changes expected.
 
 ---
 
