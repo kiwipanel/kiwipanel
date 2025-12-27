@@ -3,7 +3,6 @@ package cli
 import (
 	"fmt"
 	"os"
-	"os/user"
 	"strings"
 
 	"github.com/fatih/color"
@@ -25,8 +24,9 @@ var rootCmd = &cobra.Command{
 	Short: ShortIntroduction,
 	// PersistentPreRunE runs before ANY subcommand
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-		// Skip root check for help and version commands
-		if cmd.Name() == "help" || cmd.Name() == "version" {
+		// Commands that must NEVER be blocked
+		switch cmd.Name() {
+		case "help", "version", "serve":
 			return nil
 		}
 
@@ -43,18 +43,12 @@ func Root() {
 
 // checkRequireRoot ensures the command is run as root (UID 0)
 func checkRequireRoot() error {
-	currentUser, err := user.Current()
-	if err != nil {
-		return fmt.Errorf("failed to get current user: %w", err)
-	}
-
-	if currentUser.Uid != "0" {
+	if os.Geteuid() != 0 {
 		cmdArgs := ""
 		if len(os.Args) > 1 {
 			cmdArgs = " " + strings.Join(os.Args[1:], " ")
 		}
 		return fmt.Errorf("this command must be run as root. Please use: sudo kiwipanel%s", cmdArgs)
 	}
-
 	return nil
 }

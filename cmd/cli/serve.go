@@ -29,9 +29,8 @@ var serveCmd = &cobra.Command{
 		if os.Getenv("INVOCATION_ID") == "" {
 			return fmt.Errorf("do not run serve manually; use systemctl")
 		}
-		app.Boot("production")
 		log.Println("KiwiPanel server starting (systemd)")
+		app.Boot("production")
 		select {} // KEEP PROCESS ALIVE
-		// return nil
 	},
 }

@@ -2,9 +2,9 @@
 
 ⚠️ WARNING: PRE-ALPHA RELEASE - DO NOT DEPLOY TO PRODUCTION
 
-KiwiPanel is a lightweight, open-source server control panel focused on simplicity, transparency, and sane defaults. It is designed to help you manage a LOMP stack (Linux, OpenLiteSpeed, MariaDB, PHP) without the bloat, lock-in, or opaque automation commonly found in traditional hosting panels.
+KiwiPanel is a lightweight, open-source server control panel focused on simplicity, transparency, and sane defaults. It is designed to help you manage a LOMP stack (Linux, OpenLiteSpeed, MariaDB, PHP) without the bloat, lock-in.
 
-Unlike all-in-one panels that attempt to abstract everything away, KiwiPanel aims to stay close to the underlying system. Most operations map directly to standard Linux tools and configurations, making the panel predictable, auditable, and friendly to developers and system administrators who want control rather than magic.
+Unlike all-in-one panels that attempt to abstract everything away, KiwiPanel aims to stay close to the underlying system. Most operations map directly to standard Linux tools and configurations, making the panel predictable, auditable, and friendly to developers and system administrators.
 
 ### Built for Developers & VPS Users
 
@@ -21,7 +21,7 @@ KiwiPanel is written primarily in Go, with a strong emphasis on:
 
 A core design principle of KiwiPanel is **zero lock-in**:
 
-- KiwiPanel can be **safely uninstalled at any time** using the command `kiwipanel uninstall` 
+- KiwiPanel can be **safely uninstalled at any time** using the command `kiwipanel uninstall` (with root privilege) 
 - Your web stack continues to function normally after removal
 - No proprietary configuration formats
 - No background agents required for runtime operation
@@ -86,7 +86,7 @@ On some cloud service providers such as Amazon Lightsail or Oracle, you have to 
 
 The roadmap below reflects the current direction, but priorities may shift based on real-world usage and community feedback.
 
-### Phase 0 — Foundation (Current / Pre-Alpha)
+### Phase 0 — Foundation (Pre-Alpha)
 **Goal:** Establish a clean, inspectable core with minimal abstraction.
 
 - [x] Installer bootstrap for supported Linux distributions  
@@ -100,7 +100,7 @@ The roadmap below reflects the current direction, but priorities may shift based
 
 ---
 
-### Phase 1 — Core Panel Features (Alpha)
+### Phase 1 — Core Panel Features (Current / Alpha)
 **Goal:** Make KiwiPanel usable for real servers with limited scope.
 
 - [ ] Web UI authentication (local users only)  (in progress)
@@ -116,6 +116,10 @@ The roadmap below reflects the current direction, but priorities may shift based
 - [ ] Database management (create/delete users & databases)
 - [ ] Safe defaults for permissions and filesystem layout
 - [ ] Non-destructive config generation (no silent overwrites)
+- [ ] Per-user jailed SSH
+- [ ] Resource limits (CPU / RAM per vhost)
+- [ ] PHP version per site
+- [ ] Auto-SSL flow
 
 ⚠️ Not production-ready. Breaking changes expected.
 
@@ -176,7 +180,7 @@ KiwiPanel prioritizes:
 
 If a feature cannot be explained clearly or mapped directly to system behavior, it likely does not belong in KiwiPanel.
 
-### Dependencies
+### Dependencies (credits)
 - https://github.com/go-chi/chi
 - https://github.com/shirou/gopsutil/
 - https://github.com/spf13/cobra
