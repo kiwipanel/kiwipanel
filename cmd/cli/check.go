@@ -398,7 +398,7 @@ func runAllChecks(doFix bool) *CheckReport {
 	}
 
 	// 3. Services
-	serviceNames := []string{"kiwipanel", "lsws", "mariadb", "redis", "nginx", "apache2", "httpd"}
+	serviceNames := []string{"kiwipanel", "lshttpd", "mariadb", "redis", "nginx", "apache2", "httpd"}
 	for _, s := range serviceNames {
 		if serviceExists(s) { // serviceExists will add .service suffix internally
 			if svcRunning(s) {
