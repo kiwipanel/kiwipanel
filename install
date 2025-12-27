@@ -13,6 +13,14 @@
 # KiwiPanel Installer v0.0.1
 # To install KiwiPanel copy the following instruction and paste to the terminal:
 # curl -sLO https://raw.githubusercontent.com/kiwipanel/kiwipanel/main/install && chmod +x install && sudo bash install
+# PHASE 0  – preflight & environment
+# PHASE 1  – base OS & firewall
+# PHASE 2  – KiwiPanel files (NO LSWS touches)
+# PHASE 3  – OpenLiteSpeed install (NO restart)
+# PHASE 4  – LSWS config generation
+# PHASE 5  – LSWS validation
+# PHASE 6  – single controlled start
+# PHASE 7  – post-start verification
 
 ######################################################################
 clear
@@ -23,28 +31,43 @@ export LC_ALL="${LC_ALL:-en_US.UTF-8}"
 if command -v locale-gen >/dev/null 2>&1; then
     locale-gen en_US.UTF-8
 fi
-
-function preflight_checks() {
-    PrintInfo "Running pre-flight checks..."
-    
-    # Check internet connectivity
-    if ! curl -s --max-time 5 https://google.com > /dev/null; then
-        PrintRed "No internet connection"
-        exit 1
-    fi
-    
-    # Check required commands
-    for cmd in curl wget unzip systemctl; do
-        if ! command -v $cmd >/dev/null 2>&1; then
-            PrintRed "Required command not found: $cmd"
-            exit 1
-        fi
-    done
-}
-
 # Stop on error 
 set -euo pipefail
 trap 'LogError "Failed: command=\"$BASH_COMMAND\" line=$LINENO"' ERR
+
+function preflight_checks() {
+    PrintInfo "Running pre-flight checks..."
+    # Internet check
+    if ! curl -s --max-time 5 https://google.com >/dev/null; then
+        PrintRed "No internet connection"
+        exit 1
+    fi
+
+    local missing=()
+
+    for cmd in curl wget unzip systemctl; do
+        if ! command -v "$cmd" >/dev/null 2>&1; then
+            missing+=("$cmd")
+        fi
+    done
+
+    if [ ${#missing[@]} -gt 0 ]; then
+        PrintInfo "Installing missing dependencies: ${missing[*]}"
+        if command -v apt >/dev/null 2>&1; then
+            apt update -y
+            apt install -y "${missing[@]}"
+        elif command -v dnf >/dev/null 2>&1; then
+            dnf install -y "${missing[@]}"
+        elif command -v yum >/dev/null 2>&1; then
+            yum install -y "${missing[@]}"
+        else
+            PrintRed "Unsupported package manager. Install manually: ${missing[*]}"
+            exit 1
+        fi
+    fi
+}
+
+
 
 DEBUG=${DEBUG:-0}
 AUTO_UPGRADE=${AUTO_UPGRADE:-0}
@@ -121,13 +144,15 @@ function PrintRed() {
 
 function generate_random_string() {
     local length="${1:-12}"
-    if command -v openssl >/dev/null 2>&1; then
-        openssl rand -hex 6
-    else    
-        local result
-        result=$(tr -dc 'a-z0-9' < /dev/urandom | head -c "$length" || true)
-        echo "$result"      
+    
+    if ! command -v openssl >/dev/null 2>&1; then
+        PrintRed "OpenSSL is required for secure password generation"
+        exit 1
     fi
+    
+    # Generate exact length: each hex byte produces 2 characters
+    local bytes=$(( (length + 1) / 2 ))
+    openssl rand -hex "$bytes" | cut -c1-"$length"
 }
 
 # Check for sudo/root privileges######################################
@@ -167,7 +192,7 @@ if systemctl status kiwipanel.service >/dev/null 2>&1; then
     PrintRed "Please install on a fresh compute or manually remove the existing service."
     exit 1
 else
-    PrintGreen "Welcome! Thanks for choosing KiwiPanel!"
+    PrintGreen "Welcome! Thanks for choosing KiwiPanel."
 fi
 
 # Detect the system's architecture
@@ -1135,8 +1160,8 @@ detect_os() {
 # Install LiteSpeed Repository (OFFICIAL)
 # ------------------------------------------------------------------------------
 install_repo() {
-    if command -v lswsctrl >/dev/null 2>&1; then
-        PrintInfo "LiteSpeed repository already configured"
+    if [[ -f /etc/apt/sources.list.d/litespeed.list ]]; then
+      PrintInfo "LiteSpeed repository already configured"
         return
     fi
 
@@ -1156,29 +1181,51 @@ install_ols() {
     PrintInfo "Installing OpenLiteSpeed"
     apt-get update -y
     apt-get install -y openlitespeed
-    PrintGreen "Done: Installed OpenLiteSpeed"
+    # Disable auto-start on installation (KiwiPanel will manage service state)
+    # CRITICAL
+    systemctl stop lshttpd || true
+    systemctl disable lshttpd || true
+
+    PrintGreen "Done: Installed OpenLiteSpeed (not started)"
 }
 
-# ------------------------------------------------------------------------------
-# Ensure OpenLiteSpeed is enabled & running
-# ------------------------------------------------------------------------------
-ensure_running() {
-    systemctl enable lshttpd >/dev/null 2>&1
+start_lsws_once() {
+    PrintInfo "Starting OpenLiteSpeed (single controlled start)"
 
-    if "$LSWS_CTRL" status 2>/dev/null | grep -q running; then
-        PrintGreen "OpenLiteSpeed is already running"
-    else
-        PrintInfo "Starting OpenLiteSpeed"
-        systemctl start lshttpd
-        sleep 2
-        if "$LSWS_CTRL" status 2>/dev/null | grep -q running; then
-            PrintGreen "OpenLiteSpeed started successfully"
-        else
-            PrintWarn "OpenLiteSpeed may not have started correctly"
-            systemctl status lshttpd --no-pager || true
-        fi
+    if systemctl is-active --quiet lshttpd; then
+        PrintWarn "lshttpd already running — refusing to start twice"
+        return 0
     fi
+
+    systemctl enable lshttpd
+    systemctl start lshttpd
+
+    wait_for_lsws || {
+        PrintRed "OpenLiteSpeed failed to bind port 80"
+        exit 1
+    }
 }
+
+# ------------------------------------------------------------------------------
+# ---- OpenLiteSpeed readiness check ----
+# ------------------------------------------------------------------------------
+wait_for_lsws() {
+    PrintInfo "Waiting for OpenLiteSpeed to bind port 80..."
+    for i in {1..60}; do
+        if ss -tln | awk '{print $4}' | grep -q ':80$'; then
+            PrintGreen "✓ OpenLiteSpeed is listening on port 80"
+            return 0
+        fi
+        sleep 1
+    done
+
+    PrintRed "OpenLiteSpeed did not bind port 80"
+    PrintRed "Last error log:"
+    tail -n 20 /usr/local/lsws/logs/error.log
+    return 1
+}
+
+
 
 # ------------------------------------------------------------------------------
 # Install LSPHP (no assumptions, no overrides)
@@ -1204,40 +1251,26 @@ function install_lsphp() {
 # IMPORTANT:
 # OpenLiteSpeed listeners MUST be configured in httpd_config.conf
 # systemd overrides cannot control listening ports
-configure_lsws_default_listener() {
-    local CONF="$LSWS_DIR/conf/httpd_config.conf"
-    local LISTENER_NAME="HTTP"
+remove_lsws_default_8088() {
+    local CONF="/usr/local/lsws/conf/httpd_config.conf"
 
+    PrintInfo "Removing default OpenLiteSpeed 8088 listener"
+
+    sed -i '/listener Default/,/}/d' "$CONF"
+}
+
+configure_lsws_listener() {
+    local CONF="$LSWS_DIR/conf/httpd_config.conf"    
     PrintInfo "Configuring OpenLiteSpeed HTTP listener on port 80 (KiwiPanel-managed)"
-
     # Backup once
     if [[ ! -f "${CONF}.bak" ]]; then
         cp "$CONF" "${CONF}.bak"
     fi
 
-    # 1️⃣ Remove any existing KiwiPanel HTTP listener
-    sed -i "/listener ${LISTENER_NAME} {/,/}/d" "$CONF"
+    remove_lsws_default_8088
 
-    # 2️⃣ Remove *dangerous* Default listener on port 80 (if any)
-    awk '
-        BEGIN { in_listener=0 }
-        /listener Default[[:space:]]*{/ { in_listener=1; buf=$0; next }
-        in_listener && /}/ {
-            buf = buf "\n" $0
-            if (buf ~ /\*:80/) {
-                in_listener=0
-                next
-            }
-            print buf
-            in_listener=0
-            next
-        }
-        in_listener { buf = buf "\n" $0; next }
-        { print }
-    ' "$CONF" > "${CONF}.tmp" && mv "${CONF}.tmp" "$CONF"
-
-# Include KiwiPanel-managed config (safe, upgrade-proof)
-if ! grep -q "kiwipanel.conf" "$CONF"; then
+    # Include KiwiPanel-managed config (safe, upgrade-proof)
+        if ! grep -q "kiwipanel.conf" "$CONF"; then
     cat >> "$CONF" <<'EOF'
 
 # =========================================================
@@ -1245,9 +1278,7 @@ if ! grep -q "kiwipanel.conf" "$CONF"; then
 # =========================================================
 include /opt/kiwipanel/config/lsws/config/kiwipanel.conf
 EOF
-fi
-
-    PrintGreen "✓ HTTP listener configured cleanly on port 80"
+    fi   
 }
 
 # ------------------------------------------------------------------------------
@@ -1259,8 +1290,7 @@ disable_7080() {
 
     if grep -q "address.*:7080" "$CONF"; then
         PrintInfo "Restricting WebAdmin to localhost (7080)"
-        sed -i 's/address.*/address 127.0.0.1:7080/' "$CONF"
-        systemctl restart lshttpd
+        sed -i 's/address.*/address 127.0.0.1:7080/' "$CONF"        
     else
         PrintInfo "WebAdmin listener already restricted"
     fi
@@ -1298,19 +1328,6 @@ function ensure_admin_password() {
 
     PrintInfo "Initializing WebAdmin password"
     "$LSWS_DIR/admin/misc/admpass.sh"
-}
-
-# ------------------------------------------------------------------------------
-# Health checks (LiteSpeed-standard)
-# ------------------------------------------------------------------------------
-function health_check() {    
-    if ss -tulnp | awk '$5 ~ /:80$/'; then
-        PrintGreen "✓ OpenLiteSpeed is listening on port 80"
-    else
-        PrintRed "✗ OpenLiteSpeed failed to bind port 80"
-        PrintRed "Installation aborted (listener misconfiguration)"
-        exit 1
-    fi
 }
 
 
@@ -1400,10 +1417,10 @@ function installkiwipanel() {
     show_version
     download_package
     extract_package
-    create_group_and_user      # ✅ Create user/group FIRST
+    create_group_and_user      
     create_system_directories
-    fix_permissions            # ✅ Then fix general permissions
-    fix_script_permissions     # ✅ Then fix script permissions
+    fix_permissions            
+    fix_script_permissions     
     install_wrapper
     generate_the_passcode 
     install_systemd_service
@@ -1420,17 +1437,13 @@ function install_litespeed_server() {
     install_ols
     install_lsphp
     ensure_admin_password
-    ensure_running    
-    configure_lsws_default_listener    
-    disable_7080
+        
     configure_minimal_vhost
-    
-    # ✅ Graceful restart to apply all changes
-    PrintInfo "Restarting OpenLiteSpeed"
-    systemctl restart lshttpd
-    sleep 2
+    configure_lsws_listener    
+    disable_7080
 
-    health_check
+     # ✅ NO restart here - just configure
+    PrintInfo "OpenLiteSpeed configuration complete"
 }
 
 function main() {
@@ -1439,9 +1452,10 @@ function main() {
     check_condition_before_install       
     install_base        
     create_swap
-    install_firewall
-    install_litespeed_server
-    installkiwipanel    
+    install_firewall    
+    installkiwipanel
+    install_litespeed_server 
+    start_lsws_once   
     verify
     post_install_check
     successMessage    
