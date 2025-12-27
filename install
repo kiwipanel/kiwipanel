@@ -24,6 +24,23 @@ if command -v locale-gen >/dev/null 2>&1; then
     locale-gen en_US.UTF-8
 fi
 
+function preflight_checks() {
+    PrintInfo "Running pre-flight checks..."
+    
+    # Check internet connectivity
+    if ! curl -s --max-time 5 https://google.com > /dev/null; then
+        PrintRed "No internet connection"
+        exit 1
+    fi
+    
+    # Check required commands
+    for cmd in curl wget unzip systemctl; do
+        if ! command -v $cmd >/dev/null 2>&1; then
+            PrintRed "Required command not found: $cmd"
+            exit 1
+        fi
+    done
+}
 
 # Stop on error 
 set -euo pipefail
@@ -381,7 +398,7 @@ check_os() {
     PrintGreen "Operating system is supported ✔"
 }
 
-#Check port https://ping.eu/port-chk/check_port_usage() {
+#Check port https://ping.eu/port-chk/
 function check_port_usage() {
     local port="$1"
     PrintInfo "Checking port $port..."
@@ -483,6 +500,12 @@ function download_package() {
     PrintInfo "==> Downloading KiwiPanel package"
     if ! curl -L --fail "$ZIP_URL" -o "$TMP_ZIP"; then
         echo "❌ Failed to download KiwiPanel package. Exiting."
+        exit 1
+    fi
+
+    # ADD CHECKSUM VALIDATION
+    if [[ ! -s "$TMP_ZIP" ]]; then
+        PrintRed "Downloaded file is empty"
         exit 1
     fi
 }
@@ -658,7 +681,7 @@ function install_systemd_service() {
 
      # Wait for service to be ready
     PrintInfo "Waiting for KiwiPanel service to start..."
-    local timeout=5
+    local timeout=10
     local elapsed=0    
     while [ $elapsed -lt $timeout ]; do
         if systemctl is-active --quiet kiwipanel.service; then
@@ -1213,20 +1236,6 @@ configure_lsws_default_listener() {
         { print }
     ' "$CONF" > "${CONF}.tmp" && mv "${CONF}.tmp" "$CONF"
 
-    # 3️⃣ Append clean HTTP listener
-    cat >> "$CONF" <<EOF
-
-# =========================================================
-# KiwiPanel-managed HTTP listener
-# DO NOT EDIT MANUALLY
-# =========================================================
-listener ${LISTENER_NAME} {
-    address                 *:80
-    secure                  0
-    map                     Example *
-}
-EOF
-
 # Include KiwiPanel-managed config (safe, upgrade-proof)
 if ! grep -q "kiwipanel.conf" "$CONF"; then
     cat >> "$CONF" <<'EOF'
@@ -1348,7 +1357,7 @@ function post_install_check() {
     done
     
     # Check disk space
-    local disk_free=$(df / | tail -1 | awk '{print $4}')
+    local disk_free=$(df / | tail -1 | awk '{print $4}')    
     if [ "$disk_free" -lt 1048576 ]; then  # Less than 1GB
         PrintWarn "Low disk space: $(($disk_free / 1024))MB free"
     fi
@@ -1426,6 +1435,7 @@ function install_litespeed_server() {
 
 function main() {
     welcome
+    preflight_checks
     check_condition_before_install       
     install_base        
     create_swap
